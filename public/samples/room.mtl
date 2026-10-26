@@ -1,0 +1,44 @@
+# Sample materials for room.obj
+newmtl floor
+Ka 0.1 0.08 0.06
+Kd 0.74 0.58 0.40
+Ks 0.05 0.05 0.05
+Ns 10
+
+newmtl wall
+Kd 0.90 0.89 0.85
+Ks 0.02 0.02 0.02
+Ns 4
+
+newmtl rug
+Kd 0.70 0.44 0.34
+Ns 2
+
+newmtl bedwood
+Kd 0.33 0.24 0.18
+Ns 20
+
+newmtl sheet
+Kd 0.94 0.91 0.85
+Ns 3
+
+newmtl duvet
+Kd 0.55 0.60 0.58
+Ns 3
+
+newmtl wood
+Kd 0.45 0.33 0.24
+Ns 20
+
+newmtl brass
+Kd 0.80 0.66 0.35
+Ks 0.3 0.25 0.1
+Ns 60
+
+newmtl shade
+Kd 0.96 0.93 0.86
+Ns 2
+
+newmtl art
+Kd 0.36 0.45 0.52
+Ns 8

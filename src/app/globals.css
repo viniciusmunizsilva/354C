@@ -1,0 +1,125 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * 3D Room Gallery — editorial light theme.
+ * A warm paper background, ink foreground, hairline borders and a single
+ * muted clay accent. Tokens follow the shadcn/ui naming so the UI primitives
+ * in components/ui work unchanged.
+ */
+
+:root {
+  --radius: 0.625rem;
+
+  --background: #f8f7f4;
+  --foreground: #1c1b19;
+
+  --card: #ffffff;
+  --card-foreground: #1c1b19;
+
+  --popover: #ffffff;
+  --popover-foreground: #1c1b19;
+
+  --primary: #1c1b19;
+  --primary-foreground: #f8f7f4;
+
+  --secondary: #efede8;
+  --secondary-foreground: #26241f;
+
+  --muted: #efede8;
+  --muted-foreground: #78746c;
+
+  --accent: #8f5a3c;
+  --accent-foreground: #ffffff;
+
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+
+  --border: #e4e1da;
+  --input: #e4e1da;
+  --ring: #a9a398;
+}
+
+.dark {
+  --background: #14130f;
+  --foreground: #ece9e2;
+  --card: #1c1b17;
+  --card-foreground: #ece9e2;
+  --popover: #1c1b17;
+  --popover-foreground: #ece9e2;
+  --primary: #ece9e2;
+  --primary-foreground: #14130f;
+  --secondary: #26241f;
+  --secondary-foreground: #ece9e2;
+  --muted: #26241f;
+  --muted-foreground: #a39e93;
+  --accent: #c2805e;
+  --accent-foreground: #14130f;
+  --destructive: #e5584a;
+  --destructive-foreground: #14130f;
+  --border: #2d2b25;
+  --input: #2d2b25;
+  --ring: #5a5649;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}

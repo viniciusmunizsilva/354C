@@ -27,12 +27,17 @@ export default async function ProjetosPage() {
             qualquer um deles diretamente no navegador.
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/exemplo">
-            Ver modelo de exemplo
-            <ArrowRight className="size-4" />
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href="/meu-quarto">
+              Ver meu quarto
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/exemplo">Modelo de exemplo</Link>
+          </Button>
+        </div>
       </div>
 
       {configured ? (

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Static assets served as-is (vendored three.js + design handoff bundle).
+    "public/**",
   ]),
 ]);
 

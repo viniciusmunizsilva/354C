@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dormitório 2 — Layout C (3D)</title>
+<!-- three.js vendorizado localmente (servido do próprio domínio, sem CDN externo) -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "/quarto-3d/vendor/three/build/three.module.js",
+    "three/addons/controls/OrbitControls.js": "/quarto-3d/vendor/three/examples/jsm/controls/OrbitControls.js",
+    "three/addons/exporters/OBJExporter.js": "/quarto-3d/vendor/three/examples/jsm/exporters/OBJExporter.js",
+    "three/addons/exporters/GLTFExporter.js": "/quarto-3d/vendor/three/examples/jsm/exporters/GLTFExporter.js"
+  }
+}
+</script>
+<link rel="stylesheet" href="_ds/nocturne-c9a73ccb-8c18-4e15-a370-c7d8ef36fa06/styles.css">
+<style>
+html,body{margin:0;height:100%;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)}
+three-d-stage:not(:defined){visibility:hidden}
+three-d-stage{display:block;width:100vw;height:100vh}
+.info{position:fixed;left:16px;top:16px;max-width:340px;background:var(--color-surface);border-radius:var(--radius-md);padding:12px 14px;font-size:12px;line-height:1.5;box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:6px}
+.info b{font-weight:500;font-size:14px}
+.info span{color:var(--color-neutral-300)}
+.info .k{color:var(--color-accent-300);letter-spacing:.06em;font-size:11px}
+</style>
+</head>
+<body>
+<three-d-stage name="dormitorio2-layoutC" background="#161826"></three-d-stage>
+<div class="info">
+  <div class="k">DORMITÓRIO 2 · LAYOUT C · 3D</div>
+  <b>Mesa em L 1,40 × 1,80 m · acabamento carvalho e cinza</b>
+  <span>TV 32″ (0,72 × 0,43 m com moldura; tela 16:9 de 0,71 × 0,40 m) na parede sobre o lado de 1,80 m, base a 1,35 m, na reta da cama. Soundbar logo abaixo (1,24–1,31 m), centralizada.</span>
+  <span>Guarda-roupa com 2 portas de correr (0,75 m cada, trilhos duplos) — nenhuma folha avança na passagem.</span>
+  <span>Cadeira guardada sob a mesa. Puff azul-marinho Ø 0,65 m no vão entre o pé da cama e a mesa, voltado para a TV (móvel).</span>
+  <span>Monitor 24″ no lado de 1,80 m (topo 1,19 m, abaixo da soundbar), notebook no lado da janela. Sob os violões: amplificador 0,40 × 0,25 m e estante de equipamentos 0,56 × 0,30 × 0,62 m.</span>
+  <span>Estante baixa vazada 0,58 × 0,30 m ao lado da mesa, antes da porta. Paredes e porta ocultas. Ao lado da cabeceira, na parede da cama: estantezinha suspensa 0,40 × 0,22 m (topo a 0,60 m) com abajur.</span>
+  <span>Arraste para girar · roda para zoom · botão direito para mover.</span>
+</div>
+<script src="three-d-stage.js"></script>
+<script type="module">
+const stage = document.querySelector('three-d-stage');
+const { THREE } = await stage.ready;
+const g = new THREE.Group(); g.name = 'dormitorio2';
+const M = (name, color, rough = 0.8, metal = 0) => { const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal }); m.name = name; return m; };
+const mat = {
+  floor: M('piso_carvalho', 0xc9a67a, 0.65),
+  oak: M('carvalho', 0xb88a55, 0.55),
+  uph: M('estofado_cinza', 0x6f6c68, 0.95),
+  linen: M('linho', 0xe7e0d3, 0.95),
+  white: M('lencol', 0xf1eee8, 0.95),
+  charcoal: M('manta_grafite', 0x3b3b3e, 0.95),
+  rug: M('tapete', 0xd9d1c3, 1.0),
+  greyfront: M('cinza_fosco', 0x8c8984, 0.7),
+  dark: M('preto_tela', 0x222326, 0.35, 0.2),
+  metal: M('metal_preto', 0x2c2c30, 0.45, 0.3),
+  leaf: M('folhagem', 0x5f7d48, 0.85),
+  pot: M('vaso', 0xebe7df, 0.6),
+  sound: M('boca_violao', 0x1a1714, 0.6),
+  spruce: M('tampo_violao', 0xd8a96a, 0.4),
+  warm: M('luz_quente', 0xffd9a0, 0.4),
+};
+mat.warm.emissive = new THREE.Color(0xffc777); mat.warm.emissiveIntensity = 0.9;
+const OX = 1.9, OZ = 1.675;
+const add = (mesh, name) => { mesh.name = name; mesh.castShadow = mesh.receiveShadow = true; g.add(mesh); return mesh; };
+function box(name, m, x0, x1, z0, z1, y0, y1) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), m);
+  mesh.position.set((x0 + x1) / 2 - OX, (y0 + y1) / 2, (z0 + z1) / 2 - OZ); return add(mesh, name);
+}
+function cyl(name, m, x, z, y0, y1, r0, r1 = r0, seg = 32) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, y1 - y0, seg), m);
+  mesh.position.set(x - OX, (y0 + y1) / 2, z - OZ); return add(mesh, name);
+}
+function sph(name, m, x, y, z, r, sy = 1) {
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 16), m); mesh.scale.y = sy;
+  mesh.position.set(x - OX, y, z - OZ); return add(mesh, name);
+}
+function plant(name, x, z, y0, s = 1) {
+  cyl(name + '_vaso', mat.pot, x, z, y0, y0 + 0.12 * s, 0.06 * s, 0.075 * s);
+  sph(name + '_folhas_1', mat.leaf, x, y0 + 0.2 * s, z, 0.1 * s, 0.9);
+  sph(name + '_folhas_2', mat.leaf, x + 0.05 * s, y0 + 0.27 * s, z - 0.03 * s, 0.07 * s);
+  sph(name + '_folhas_3', mat.leaf, x - 0.05 * s, y0 + 0.25 * s, z + 0.04 * s, 0.07 * s);
+}
+// piso
+box('piso', mat.floor, 0, 3.8, 0, 3.0, -0.02, 0);
+box('piso_porta', mat.floor, 2.6, 3.8, 3.0, 3.35, -0.02, 0);
+box('tapete', mat.rug, 0.55, 2.30, 0.30, 2.08, 0, 0.012);
+// cama — painel ripado de carvalho atrás, cabeceira estofada cinza
+box('painel_cabeceira', mat.oak, 0, 0.025, 0.30, 2.08, 0, 1.30);
+for (let i = 0; i < 12; i++) box('painel_ripa_' + (i + 1), mat.oak, 0.025, 0.04, 0.32 + i * 0.148, 0.36 + i * 0.148, 0, 1.30);
+box('cabeceira_estofada', mat.uph, 0.04, 0.12, 0.48, 1.90, 0.25, 1.05);
+box('cama_base', mat.uph, 0.10, 1.80, 0.50, 1.88, 0.04, 0.32);
+box('colchao', mat.white, 0.12, 1.78, 0.52, 1.86, 0.32, 0.54);
+box('edredom', mat.linen, 0.62, 1.80, 0.50, 1.88, 0.54, 0.58);
+box('edredom_dobra', mat.linen, 0.62, 0.72, 0.50, 1.88, 0.58, 0.60);
+box('manta_central', mat.charcoal, 0.75, 1.81, 0.95, 1.43, 0.58, 0.60);
+box('travesseiro_1', mat.linen, 0.14, 0.42, 0.56, 1.16, 0.54, 0.68);
+box('travesseiro_2', mat.linen, 0.14, 0.42, 1.22, 1.82, 0.54, 0.68);
+box('almofada_1', mat.charcoal, 0.40, 0.56, 0.72, 1.12, 0.56, 0.72);
+box('almofada_2', mat.charcoal, 0.40, 0.56, 1.26, 1.66, 0.56, 0.72);
+// estantezinha suspensa na parede da cama (sobre o painel), ao lado da cabeceira — 0,40 × 0,22 m
+box('estantezinha_lateral_1', mat.oak, 0.04, 0.26, 0.08, 0.10, 0.30, 0.60);
+box('estantezinha_lateral_2', mat.oak, 0.04, 0.26, 0.46, 0.48, 0.30, 0.60);
+box('estantezinha_base', mat.oak, 0.04, 0.26, 0.08, 0.48, 0.30, 0.32);
+box('estantezinha_tampo', mat.oak, 0.04, 0.26, 0.08, 0.48, 0.58, 0.60);
+[[0x7b4a3a, 0.20], [0x3d4f5f, 0.22], [0xc9b28a, 0.18]].forEach(([c, hh], i) => box('estantezinha_livro_' + (i + 1), M('estantezinha_livro_cor_' + (i + 1), c, 0.8), 0.06, 0.23, 0.12 + i * 0.035, 0.15 + i * 0.035, 0.32, 0.32 + hh));
+box('estantezinha_livros_deitados', mat.charcoal, 0.07, 0.22, 0.28, 0.44, 0.32, 0.36);
+// abajur sobre a estantezinha
+cyl('abajur_base', mat.metal, 0.15, 0.28, 0.60, 0.62, 0.06, 0.06);
+cyl('abajur_haste', mat.metal, 0.15, 0.28, 0.62, 0.86, 0.008);
+cyl('abajur_cupula', mat.warm, 0.15, 0.28, 0.84, 1.00, 0.10, 0.07);
+box('mesa_tampo_janela', mat.oak, 2.40, 3.80, 0, 0.60, 0.72, 0.755);
+box('mesa_tampo_parede', mat.oak, 3.20, 3.80, 0.60, 1.80, 0.72, 0.755);
+[[2.42, 0.03], [2.42, 0.54], [3.22, 1.74], [3.74, 1.74]].forEach(([x, z], i) => box('mesa_pe_' + (i + 1), mat.metal, x, x + 0.04, z, z + 0.04, 0, 0.72));
+cyl('luminaria_base', mat.metal, 2.55, 0.12, 0.755, 0.775, 0.06);
+cyl('luminaria_haste', mat.metal, 2.55, 0.12, 0.775, 1.15, 0.008, 0.008, 12);
+cyl('luminaria_cupula', mat.metal, 2.55, 0.20, 1.06, 1.15, 0.07, 0.03);
+plant('planta_mesa_1', 3.62, 0.15, 0.755);
+plant('planta_mesa_2', 3.45, 0.15, 0.755, 0.8);
+// estante baixa vazada ao lado da mesa (0,58 × 0,30 × 0,75)
+box('estante_lateral_1', mat.oak, 3.50, 3.80, 1.82, 1.84, 0, 0.75);
+box('estante_lateral_2', mat.oak, 3.50, 3.80, 2.38, 2.40, 0, 0.75);
+[0, 0.25, 0.50, 0.73].forEach((y, i) => box('estante_prateleira_' + (i + 1), mat.oak, 3.50, 3.80, 1.84, 2.38, y, y + 0.02));
+const bookCols = [0x7b4a3a, 0x3d4f5f, 0xc9b28a, 0x5c6b4e, 0x8f3f3a, 0x2f3540, 0xd8cfbf, 0x9a7b4f];
+const bookMats = bookCols.map((c, i) => M('livro_cor_' + (i + 1), c, 0.8));
+let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+[[0.02, 0.23, 0.50], [0.27, 0.23, 0.38], [0.52, 0.21, 0.30]].forEach(([y0, hmax, fill], s) => {
+  let z = 1.855, k = 0;
+  while (z < 1.84 + fill) {
+    const t = 0.02 + rnd() * 0.025, hh = hmax * (0.7 + rnd() * 0.28), d = 0.17 + rnd() * 0.08;
+    box('livro_' + (s + 1) + '_' + (++k), bookMats[Math.floor(rnd() * bookMats.length)], 3.79 - d, 3.79, z, z + t, y0, y0 + hh);
+    z += t + 0.002;
+  }
+  const lean = box('livro_' + (s + 1) + '_inclinado', bookMats[(s * 3) % bookMats.length], 3.60, 3.79, z + 0.02, z + 0.045, y0, y0 + hmax * 0.85);
+  lean.rotation.x = 0.28; lean.position.z += 0.03;
+});
+box('livros_deitados_1', bookMats[2], 3.58, 3.79, 2.24, 2.36, 0.04, 0.07);
+box('livros_deitados_2', bookMats[5], 3.60, 3.78, 2.25, 2.35, 0.07, 0.095);
+plant('planta_estante', 3.65, 2.20, 0.75, 0.9);
+plant('planta_estante_2', 3.68, 2.25, 0.52, 0.6);
+// TV 32" na parede, na reta da cama
+box('tv_moldura', mat.dark, 3.755, 3.80, 0.83, 1.55, 1.35, 1.78);
+box('tv_tela', M('tela_tv', 0x101114, 0.15, 0.1), 3.75, 3.755, 0.84, 1.54, 1.36, 1.77);
+// monitor 24" no lado de 1,80 m (topo ≤1,20 m, abaixo da soundbar)
+box('monitor_tela', mat.dark, 3.62, 3.645, 0.92, 1.46, 0.86, 1.19);
+box('monitor_haste', mat.metal, 3.65, 3.675, 1.17, 1.21, 0.755, 0.90);
+box('monitor_base', mat.metal, 3.58, 3.74, 1.11, 1.27, 0.755, 0.765);
+box('mousepad', mat.charcoal, 3.28, 3.52, 1.36, 1.62, 0.755, 0.758);
+box('mouse', mat.dark, 3.36, 3.43, 1.47, 1.51, 0.758, 0.78);
+// notebook no lado da janela, perto do canto
+box('notebook_base', mat.metal, 2.95, 3.27, 0.10, 0.32, 0.755, 0.77);
+const lid = box('notebook_tela', mat.dark, 2.95, 3.27, 0.09, 0.10, 0.77, 0.99); lid.rotation.x = -0.25;
+// soundbar na parede, logo abaixo da TV (0,60 × 0,075 × 0,08 — confirmar medida do modelo)
+box('soundbar', mat.dark, 3.715, 3.795, 0.89, 1.49, 1.24, 1.315);
+box('soundbar_grade', M('grade_soundbar', 0x34353a, 0.9), 3.712, 3.715, 0.90, 1.48, 1.25, 1.305);
+box('soundbar_suporte_1', mat.metal, 3.795, 3.80, 0.98, 1.04, 1.25, 1.30);
+box('soundbar_suporte_2', mat.metal, 3.795, 3.80, 1.34, 1.40, 1.25, 1.30);
+// cadeira de escritório (tela preta, base estrela) — empurrada para baixo da mesa
+const _chairStart = g.children.length;
+box('cadeira_assento', mat.dark, 2.68, 3.10, 0.97, 1.41, 0.44, 0.50);
+box('cadeira_encosto', mat.dark, 2.60, 2.66, 0.99, 1.39, 0.56, 1.05);
+box('cadeira_suporte_encosto', mat.metal, 2.63, 2.70, 1.17, 1.21, 0.44, 0.60);
+[[0.99], [1.39]].forEach(([z], i) => { box('cadeira_braco_' + (i + 1), mat.dark, 2.72, 3.00, z - 0.02, z + 0.02, 0.64, 0.67); box('cadeira_braco_' + (i + 1) + '_apoio', mat.metal, 2.84, 2.87, z - 0.015, z + 0.015, 0.50, 0.64); });
+cyl('cadeira_coluna', mat.metal, 2.89, 1.19, 0.08, 0.44, 0.025, 0.025, 16);
+for (let i = 0; i < 5; i++) {
+  const a = (i / 5) * Math.PI * 2, leg = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.03, 0.04), mat.metal);
+  leg.position.set(2.89 - OX + Math.cos(a) * 0.15, 0.07, 1.19 - OZ + Math.sin(a) * 0.15); leg.rotation.y = -a; add(leg, 'cadeira_pe_' + (i + 1));
+  const w = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 8), mat.dark); w.position.set(2.89 - OX + Math.cos(a) * 0.29, 0.025, 1.19 - OZ + Math.sin(a) * 0.29); add(w, 'cadeira_rodizio_' + (i + 1));
+}
+for (let i = _chairStart; i < g.children.length; i++) g.children[i].position.x += 0.20;
+// puff tipo bean bag azul-marinho (Ø 0,65 m), voltado para a TV
+const navy = M('puff_azul_marinho', 0x1f2c66, 0.95);
+sph('puff_corpo', navy, 2.50, 0.19, 1.95, 0.33, 0.58);
+sph('puff_encosto', navy, 2.33, 0.36, 1.95, 0.24, 0.85);
+sph('puff_assento', navy, 2.58, 0.30, 1.95, 0.20, 0.35);
+// guarda-roupa — frentes cinza, estrutura carvalho
+box('guarda_roupa_estrutura', mat.oak, 0, 1.50, 2.40, 3.0, 0, 2.00);
+// portas de correr: 2 folhas em trilhos paralelos, sobreposição de 6 cm
+box('trilho_superior', mat.metal, 0.02, 1.48, 2.355, 2.40, 1.955, 1.985);
+box('trilho_inferior', mat.metal, 0.02, 1.48, 2.355, 2.40, 0.015, 0.035);
+box('porta_correr_traseira', mat.greyfront, 0.03, 0.78, 2.380, 2.398, 0.035, 1.955);
+box('porta_correr_frontal', mat.greyfront, 0.72, 1.47, 2.360, 2.378, 0.035, 1.955);
+[[0.03, 0.05, 2.378], [0.76, 0.78, 2.378], [0.72, 0.74, 2.358], [1.45, 1.47, 2.358]].forEach(([x0, x1, z], i) => box('perfil_porta_' + (i + 1), mat.metal, x0, x1, z - 0.004, z, 0.035, 1.955));
+plant('planta_guarda_roupa', 1.30, 2.70, 2.00, 1.1);
+// violões na parede do banheiro (frente voltada para o quarto)
+[1.74, 2.10, 2.44].forEach((x, i) => {
+  const n = 'violao_' + (i + 1), zf = 2.90, dep = 0.10, top = i === 1 ? mat.charcoal : mat.spruce;
+  const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, dep, 48), top); lower.rotation.x = Math.PI / 2; lower.position.set(x - OX, 0.95, zf + dep / 2 - OZ); add(lower, n + '_bojo_inferior');
+  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.145, dep, 48), top); upper.rotation.x = Math.PI / 2; upper.position.set(x - OX, 1.18, zf + dep / 2 - OZ); add(upper, n + '_bojo_superior');
+  const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.004, 32), mat.sound); hole.rotation.x = Math.PI / 2; hole.position.set(x - OX, 1.09, zf - 0.001 - OZ); add(hole, n + '_boca');
+  box(n + '_cavalete', mat.sound, x - 0.06, x + 0.06, zf - 0.006, zf, 0.88, 0.90);
+  box(n + '_braco', mat.oak, x - 0.025, x + 0.025, zf + 0.02, zf + 0.05, 1.30, 1.78);
+  box(n + '_mao', mat.sound, x - 0.04, x + 0.04, zf + 0.02, zf + 0.05, 1.78, 1.94);
+  box(n + '_suporte', mat.metal, x - 0.04, x + 0.04, zf + 0.05, 3.0, 1.80, 1.82);
+});
+// amplificador e estante de equipamentos sob os violões
+box('amp_caixa', mat.charcoal, 1.60, 2.00, 2.73, 2.98, 0, 0.38);
+box('amp_tela_falante', M('tela_amp', 0x2a2522, 0.95), 1.62, 1.98, 2.725, 2.73, 0.03, 0.30);
+box('amp_painel', mat.oak, 1.60, 2.00, 2.73, 2.98, 0.38, 0.40);
+[1.68, 1.74, 1.80, 1.86].forEach((x, i) => cyl('amp_botao_' + (i + 1), mat.metal, x, 2.80, 0.40, 0.42, 0.012, 0.012, 16));
+box('equip_lateral_1', mat.oak, 2.02, 2.04, 2.70, 3.0, 0, 0.62);
+box('equip_lateral_2', mat.oak, 2.56, 2.58, 2.70, 3.0, 0, 0.62);
+[0, 0.20, 0.40, 0.60].forEach((y, i) => box('equip_prateleira_' + (i + 1), mat.oak, 2.04, 2.56, 2.70, 3.0, y, y + 0.02));
+box('pedaleira_digital', mat.dark, 2.06, 2.54, 2.73, 2.97, 0.02, 0.09);
+[2.12, 2.24, 2.36, 2.48].forEach((x, i) => cyl('pedaleira_switch_' + (i + 1), mat.metal, x, 2.78, 0.09, 0.105, 0.012, 0.012, 16));
+box('interface_audio', mat.metal, 2.07, 2.27, 2.76, 2.92, 0.22, 0.27);
+[[2.40, 2.84, 0x3a3a3c], [2.40, 2.84, 0x8f3f3a]].forEach(([x, z, c], i) => { const t = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.008, 12, 32), M('cabo_' + (i + 1), c, 0.7)); t.rotation.x = Math.PI / 2; t.position.set(x - OX, 0.225 + i * 0.017, z - OZ); add(t, 'cabo_enrolado_' + (i + 1)); });
+const mic = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.015, 0.16, 24), mat.dark); mic.rotation.z = Math.PI / 2; mic.position.set(2.20 - OX, 0.445, 2.84 - OZ); add(mic, 'microfone_corpo');
+sph('microfone_globo', mat.metal, 2.30, 0.445, 2.84, 0.028);
+box('fone_estojo', mat.charcoal, 2.36, 2.54, 2.76, 2.94, 0.42, 0.49);
+stage.setObject(g);
+</script>
+</body>
+</html>

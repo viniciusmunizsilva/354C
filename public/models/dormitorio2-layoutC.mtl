@@ -1,0 +1,186 @@
+# Exported by three-d-stage
+newmtl piso_carvalho
+Kd 0.5841 0.3813 0.1946
+Ks 0.2000 0.2000 0.2000
+Ns 70
+d 1.0000
+
+newmtl tapete
+Kd 0.6939 0.6376 0.5457
+Ks 0.2000 0.2000 0.2000
+Ns 0
+d 1.0000
+
+newmtl carvalho
+Kd 0.4793 0.2542 0.0908
+Ks 0.2000 0.2000 0.2000
+Ns 90
+d 1.0000
+
+newmtl estofado_cinza
+Kd 0.1590 0.1500 0.1384
+Ks 0.2000 0.2000 0.2000
+Ns 10
+d 1.0000
+
+newmtl lencol
+Kd 0.8796 0.8550 0.8070
+Ks 0.2000 0.2000 0.2000
+Ns 10
+d 1.0000
+
+newmtl linho
+Kd 0.7991 0.7454 0.6514
+Ks 0.2000 0.2000 0.2000
+Ns 10
+d 1.0000
+
+newmtl manta_grafite
+Kd 0.0437 0.0437 0.0482
+Ks 0.2000 0.2000 0.2000
+Ns 10
+d 1.0000
+
+newmtl estantezinha_livro_cor_1
+Kd 0.1981 0.0685 0.0423
+Ks 0.2000 0.2000 0.2000
+Ns 40
+d 1.0000
+
+newmtl estantezinha_livro_cor_2
+Kd 0.0467 0.0782 0.1144
+Ks 0.2000 0.2000 0.2000
+Ns 40
+d 1.0000
+
+newmtl estantezinha_livro_cor_3
+Kd 0.5841 0.4452 0.2542
+Ks 0.2000 0.2000 0.2000
+Ns 40
+d 1.0000
+
+newmtl metal_preto
+Kd 0.0252 0.0252 0.0296
+Ks 0.2000 0.2000 0.2000
+Ns 110
+d 1.0000
+
+newmtl luz_quente
+Kd 1.0000 0.6939 0.3515
+Ks 0.2000 0.2000 0.2000
+Ns 120
+d 1.0000
+
+newmtl vaso
+Kd 0.8308 0.7991 0.7379
+Ks 0.2000 0.2000 0.2000
+Ns 80
+d 1.0000
+
+newmtl folhagem
+Kd 0.1144 0.2051 0.0648
+Ks 0.2000 0.2000 0.2000
+Ns 30
+d 1.0000
+
+newmtl livro_cor_2
+Kd 0.0467 0.0782 0.1144
+Ks 0.2000 0.2000 0.2000
+Ns 40
+d 1.0000
+
+newmtl livro_cor_8
+Kd 0.3231 0.1981 0.0782
+Ks 0.2000 0.2000 0.2000
+Ns 40
+d 1.0000
+
+newmtl livro_cor_7
+Kd 0.6867 0.6240 0.5210
+Ks 0.2000 0.2000 0.2000
+Ns 40
+d 1.0000
+
+newmtl livro_cor_4
+Kd 0.1070 0.1470 0.0762
+Ks 0.2000 0.2000 0.2000
+Ns 40
+d 1.0000
+
+newmtl livro_cor_3
+Kd 0.5841 0.4452 0.2542
+Ks 0.2000 0.2000 0.2000
+Ns 40
+d 1.0000
+
+newmtl livro_cor_6
+Kd 0.0284 0.0356 0.0513
+Ks 0.2000 0.2000 0.2000
+Ns 40
+d 1.0000
+
+newmtl livro_cor_1
+Kd 0.1981 0.0685 0.0423
+Ks 0.2000 0.2000 0.2000
+Ns 40
+d 1.0000
+
+newmtl preto_tela
+Kd 0.0160 0.0168 0.0194
+Ks 0.2000 0.2000 0.2000
+Ns 130
+d 1.0000
+
+newmtl tela_tv
+Kd 0.0052 0.0056 0.0070
+Ks 0.2000 0.2000 0.2000
+Ns 170
+d 1.0000
+
+newmtl grade_soundbar
+Kd 0.0343 0.0356 0.0423
+Ks 0.2000 0.2000 0.2000
+Ns 20
+d 1.0000
+
+newmtl puff_azul_marinho
+Kd 0.0137 0.0252 0.1329
+Ks 0.2000 0.2000 0.2000
+Ns 10
+d 1.0000
+
+newmtl cinza_fosco
+Kd 0.2623 0.2502 0.2307
+Ks 0.2000 0.2000 0.2000
+Ns 60
+d 1.0000
+
+newmtl tampo_violao
+Kd 0.6867 0.3968 0.1441
+Ks 0.2000 0.2000 0.2000
+Ns 120
+d 1.0000
+
+newmtl boca_violao
+Kd 0.0103 0.0086 0.0070
+Ks 0.2000 0.2000 0.2000
+Ns 80
+d 1.0000
+
+newmtl tela_amp
+Kd 0.0232 0.0185 0.0160
+Ks 0.2000 0.2000 0.2000
+Ns 10
+d 1.0000
+
+newmtl cabo_1
+Kd 0.0423 0.0423 0.0452
+Ks 0.2000 0.2000 0.2000
+Ns 60
+d 1.0000
+
+newmtl cabo_2
+Kd 0.2747 0.0497 0.0423
+Ks 0.2000 0.2000 0.2000
+Ns 60
+d 1.0000

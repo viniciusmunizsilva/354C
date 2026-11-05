@@ -23,11 +23,11 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: {
-    default: "Dormitório 02 — Projeto de marcenaria",
-    template: "%s · Dormitório 02",
+    default: "Room Gallery — Ambientes 3D",
+    template: "%s · Room Gallery",
   },
   description:
-    "Apresentação interativa do projeto do dormitório, com modelo 3D e planta de referência para orçamento de marcenaria.",
+    "Portal para armazenar, organizar e visualizar modelos 3D de ambientes residenciais no navegador.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

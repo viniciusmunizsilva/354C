@@ -52,6 +52,7 @@ three-d-stage{display:block;width:100vw;height:100vh}
 <script type="module">
 const stage = document.querySelector('three-d-stage');
 const { THREE, scene, camera, controls } = await stage.ready;
+const { RoundedBoxGeometry } = await import('three/addons/geometries/RoundedBoxGeometry.js');
 const g = new THREE.Group(); g.name = 'dormitorio2';
 const M = (name, color, rough = 0.8, metal = 0) => { const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal }); m.name = name; return m; };
 const mat = {
@@ -115,6 +116,8 @@ _fabric(mat.linen, 12, 0.010, 0.92);
 _fabric(mat.white, 12, 0.008, 0.90);
 _fabric(mat.charcoal, 12, 0.012, 0.90);
 _fabric(mat.rug, 18, 0.020, 1.0);
+mat.throw = new THREE.MeshStandardMaterial({ color: 0x9c6b4f, roughness: 0.9, metalness: 0, name: 'manta_pe_cama' });
+_fabric(mat.throw, 10, 0.014, 0.9);
 
 // Reboco fosco (parede/teto) com microtextura.
 const _plasterCv = _cvs(256, (x, s) => {
@@ -140,6 +143,14 @@ function box(name, m, x0, x1, z0, z1, y0, y1) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), m);
   mesh.position.set((x0 + x1) / 2 - OX, (y0 + y1) / 2, (z0 + z1) / 2 - OZ); return add(mesh, name);
 }
+// Caixa com cantos arredondados (bevel sutil) — para estofados e peças macias.
+// Mantém exatamente a mesma envoltória; o raio é limitado à menor metade.
+function rbox(name, m, x0, x1, z0, z1, y0, y1, rad) {
+  const w = x1 - x0, h = y1 - y0, d = z1 - z0;
+  const r = Math.max(0.004, Math.min(rad == null ? 0.03 : rad, 0.49 * Math.min(w, h, d)));
+  const mesh = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, r), m);
+  mesh.position.set((x0 + x1) / 2 - OX, (y0 + y1) / 2, (z0 + z1) / 2 - OZ); return add(mesh, name);
+}
 function cyl(name, m, x, z, y0, y1, r0, r1 = r0, seg = 32) {
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, y1 - y0, seg), m);
   mesh.position.set(x - OX, (y0 + y1) / 2, z - OZ); return add(mesh, name);
@@ -161,16 +172,19 @@ box('tapete', mat.rug, 0.55, 2.30, 0.30, 2.08, 0, 0.012);
 // cama — painel ripado de carvalho atrás, cabeceira estofada cinza
 box('painel_cabeceira', mat.oak, 0, 0.025, 0.30, 2.08, 0, 1.30);
 for (let i = 0; i < 12; i++) box('painel_ripa_' + (i + 1), mat.oak, 0.025, 0.04, 0.32 + i * 0.148, 0.36 + i * 0.148, 0, 1.30);
-box('cabeceira_estofada', mat.uph, 0.04, 0.12, 0.48, 1.90, 0.25, 1.05);
-box('cama_base', mat.uph, 0.10, 1.80, 0.50, 1.88, 0.04, 0.32);
-box('colchao', mat.white, 0.12, 1.78, 0.52, 1.86, 0.32, 0.54);
-box('edredom', mat.linen, 0.62, 1.80, 0.50, 1.88, 0.54, 0.58);
-box('edredom_dobra', mat.linen, 0.62, 0.72, 0.50, 1.88, 0.58, 0.60);
-box('manta_central', mat.charcoal, 0.75, 1.81, 0.95, 1.43, 0.58, 0.60);
-box('travesseiro_1', mat.linen, 0.14, 0.42, 0.56, 1.16, 0.54, 0.68);
-box('travesseiro_2', mat.linen, 0.14, 0.42, 1.22, 1.82, 0.54, 0.68);
-box('almofada_1', mat.charcoal, 0.40, 0.56, 0.72, 1.12, 0.56, 0.72);
-box('almofada_2', mat.charcoal, 0.40, 0.56, 1.26, 1.66, 0.56, 0.72);
+rbox('cabeceira_estofada', mat.uph, 0.04, 0.13, 0.48, 1.90, 0.25, 1.05, 0.03);
+rbox('cama_base', mat.uph, 0.10, 1.80, 0.50, 1.88, 0.04, 0.32, 0.03);
+rbox('colchao', mat.white, 0.12, 1.78, 0.52, 1.86, 0.32, 0.54, 0.05);
+rbox('edredom', mat.linen, 0.62, 1.80, 0.50, 1.88, 0.54, 0.585, 0.03);
+rbox('edredom_dobra', mat.linen, 0.62, 0.74, 0.50, 1.88, 0.585, 0.615, 0.025);
+rbox('manta_central', mat.charcoal, 0.75, 1.81, 0.95, 1.43, 0.585, 0.605, 0.012);
+rbox('travesseiro_1', mat.linen, 0.14, 0.44, 0.56, 1.16, 0.54, 0.68, 0.045);
+rbox('travesseiro_2', mat.linen, 0.14, 0.44, 1.22, 1.82, 0.54, 0.68, 0.045);
+rbox('almofada_1', mat.charcoal, 0.42, 0.56, 0.74, 1.12, 0.56, 0.70, 0.045);
+rbox('almofada_2', mat.charcoal, 0.42, 0.56, 1.26, 1.64, 0.56, 0.70, 0.045);
+// manta dobrada no pé da cama (ambientação)
+rbox('manta_pe', mat.throw, 0.55, 1.78, 1.52, 1.90, 0.585, 0.655, 0.03);
+rbox('manta_pe_dobra', mat.throw, 0.55, 1.78, 1.82, 1.93, 0.655, 0.705, 0.03);
 // estantezinha suspensa na parede da cama (sobre o painel), ao lado da cabeceira — 0,40 × 0,22 m
 box('estantezinha_lateral_1', mat.oak, 0.04, 0.26, 0.08, 0.10, 0.30, 0.60);
 box('estantezinha_lateral_2', mat.oak, 0.04, 0.26, 0.46, 0.48, 0.30, 0.60);
@@ -230,8 +244,8 @@ box('soundbar_suporte_1', mat.metal, 3.795, 3.80, 0.98, 1.04, 1.25, 1.30);
 box('soundbar_suporte_2', mat.metal, 3.795, 3.80, 1.34, 1.40, 1.25, 1.30);
 // cadeira de escritório (tela preta, base estrela) — empurrada para baixo da mesa
 const _chairStart = g.children.length;
-box('cadeira_assento', mat.dark, 2.68, 3.10, 0.97, 1.41, 0.44, 0.50);
-box('cadeira_encosto', mat.dark, 2.60, 2.66, 0.99, 1.39, 0.56, 1.05);
+rbox('cadeira_assento', mat.dark, 2.68, 3.10, 0.97, 1.41, 0.44, 0.50, 0.03);
+rbox('cadeira_encosto', mat.dark, 2.60, 2.66, 0.99, 1.39, 0.56, 1.05, 0.025);
 box('cadeira_suporte_encosto', mat.metal, 2.63, 2.70, 1.17, 1.21, 0.44, 0.60);
 [[0.99], [1.39]].forEach(([z], i) => { box('cadeira_braco_' + (i + 1), mat.dark, 2.72, 3.00, z - 0.02, z + 0.02, 0.64, 0.67); box('cadeira_braco_' + (i + 1) + '_apoio', mat.metal, 2.84, 2.87, z - 0.015, z + 0.015, 0.50, 0.64); });
 cyl('cadeira_coluna', mat.metal, 2.89, 1.19, 0.08, 0.44, 0.025, 0.025, 16);
@@ -322,7 +336,7 @@ scene.add(env);
 // ===== Enquadramentos profissionais + toggle do envelope =====
 const C = (x, z, y) => new THREE.Vector3(x - OX, y, z - OZ);
 const VIEWS = {
-  'Geral':    { p: C(3.25, 3.2, 2.35), t: C(1.3, 1.2, 0.55) },
+  'Geral':    { p: C(3.72, 3.4, 2.5), t: C(1.0, 0.7, 0.2) },
   'Entrada':  { p: C(3.4, 3.15, 1.6), t: C(0.9, 1.05, 0.9) },
   'Cama':     { p: C(3.1, 1.15, 1.5), t: C(0.6, 0.65, 1.2) },
   'Trabalho': { p: C(2.1, 1.55, 1.45), t: C(3.65, 0.95, 0.9) },

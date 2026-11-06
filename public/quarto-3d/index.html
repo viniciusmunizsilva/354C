@@ -12,7 +12,14 @@
     "three/addons/controls/OrbitControls.js": "/quarto-3d/vendor/three/examples/jsm/controls/OrbitControls.js",
     "three/addons/exporters/OBJExporter.js": "/quarto-3d/vendor/three/examples/jsm/exporters/OBJExporter.js",
     "three/addons/exporters/GLTFExporter.js": "/quarto-3d/vendor/three/examples/jsm/exporters/GLTFExporter.js",
-    "three/addons/environments/RoomEnvironment.js": "/quarto-3d/vendor/three/examples/jsm/environments/RoomEnvironment.js"
+    "three/addons/environments/RoomEnvironment.js": "/quarto-3d/vendor/three/examples/jsm/environments/RoomEnvironment.js",
+    "three/addons/loaders/RGBELoader.js": "/quarto-3d/vendor/three/examples/jsm/loaders/RGBELoader.js",
+    "three/addons/geometries/RoundedBoxGeometry.js": "/quarto-3d/vendor/three/examples/jsm/geometries/RoundedBoxGeometry.js",
+    "three/addons/postprocessing/EffectComposer.js": "/quarto-3d/vendor/three/examples/jsm/postprocessing/EffectComposer.js",
+    "three/addons/postprocessing/RenderPass.js": "/quarto-3d/vendor/three/examples/jsm/postprocessing/RenderPass.js",
+    "three/addons/postprocessing/GTAOPass.js": "/quarto-3d/vendor/three/examples/jsm/postprocessing/GTAOPass.js",
+    "three/addons/postprocessing/OutputPass.js": "/quarto-3d/vendor/three/examples/jsm/postprocessing/OutputPass.js",
+    "three/addons/postprocessing/SMAAPass.js": "/quarto-3d/vendor/three/examples/jsm/postprocessing/SMAAPass.js"
   }
 }
 </script>
@@ -21,8 +28,10 @@
 html,body{margin:0;height:100%;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)}
 three-d-stage:not(:defined){visibility:hidden}
 three-d-stage{display:block;width:100vw;height:100vh}
-.info{position:fixed;left:16px;top:16px;max-width:340px;background:var(--color-surface);border-radius:var(--radius-md);padding:12px 14px;font-size:12px;line-height:1.5;box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:6px}
-.info b{font-weight:500;font-size:14px}
+.info{position:fixed;left:16px;top:16px;max-width:252px;max-height:44vh;overflow:auto;background:color-mix(in srgb, var(--color-surface) 82%, transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:var(--radius-md);padding:11px 13px;font-size:11px;line-height:1.45;box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:5px}
+.info[open]{}
+.info b{font-weight:500;font-size:12.5px}
+@media (max-width:760px){.info{display:none}}
 .info span{color:var(--color-neutral-300)}
 .info .k{color:var(--color-accent-300);letter-spacing:.06em;font-size:11px}
 </style>
@@ -42,7 +51,7 @@ three-d-stage{display:block;width:100vw;height:100vh}
 <script src="three-d-stage.js"></script>
 <script type="module">
 const stage = document.querySelector('three-d-stage');
-const { THREE } = await stage.ready;
+const { THREE, scene, camera, controls } = await stage.ready;
 const g = new THREE.Group(); g.name = 'dormitorio2';
 const M = (name, color, rough = 0.8, metal = 0) => { const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal }); m.name = name; return m; };
 const mat = {
@@ -64,33 +73,66 @@ const mat = {
 };
 mat.warm.emissive = new THREE.Color(0xffc777); mat.warm.emissiveIntensity = 0.9;
 
-// --- Texturas procedurais sutis (geradas em canvas, sem arquivos externos) ---
-// Aplicadas só em rugosidade/relevo para manter a paleta sóbria.
-function _canvasTex(size, draw, repeat) {
-  const c = document.createElement('canvas'); c.width = c.height = size;
-  const x = c.getContext('2d'); draw(x, size);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat);
-  t.anisotropy = 4; return t;
+// --- Materiais PBR: madeira (textura oficial do three.js) + tecido/reboco/metal/vidro procedurais ---
+const _texLoader = new THREE.TextureLoader();
+async function _loadTex(url, srgb, rx, ry) {
+  const t = await _texLoader.loadAsync(url);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 8;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
-const woodTex = _canvasTex(256, (x, s) => {
-  x.fillStyle = '#808080'; x.fillRect(0, 0, s, s);
-  for (let i = 0; i < 70; i++) {
-    const y = Math.random() * s, g = 110 + Math.random() * 90;
-    x.strokeStyle = 'rgba(' + g + ',' + g + ',' + g + ',0.5)';
-    x.lineWidth = 0.5 + Math.random() * 1.5; x.beginPath(); x.moveTo(0, y);
-    x.bezierCurveTo(s * 0.33, y + (Math.random() - 0.5) * 6, s * 0.66, y + (Math.random() - 0.5) * 6, s, y);
-    x.stroke();
-  }
-  for (let i = 0; i < 9000; i++) { const v = 120 + Math.random() * 80; x.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.05)'; x.fillRect(Math.random() * s, Math.random() * s, 1, 1); }
-}, 2);
-const fabricTex = _canvasTex(128, (x, s) => {
-  x.fillStyle = '#888'; x.fillRect(0, 0, s, s);
-  for (let i = 0; i < s; i += 3) { x.fillStyle = 'rgba(255,255,255,0.10)'; x.fillRect(i, 0, 1, s); x.fillStyle = 'rgba(0,0,0,0.10)'; x.fillRect(0, i, s, 1); }
-  for (let i = 0; i < 4000; i++) { const v = Math.random() * 255; x.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.08)'; x.fillRect(Math.random() * s, Math.random() * s, 1, 1); }
-}, 6);
-[mat.floor, mat.oak, mat.spruce].forEach((m) => { m.roughnessMap = woodTex; m.bumpMap = woodTex; m.bumpScale = 0.003; });
-[mat.uph, mat.linen, mat.white, mat.charcoal, mat.rug].forEach((m) => { m.roughnessMap = fabricTex; m.bumpMap = fabricTex; m.bumpScale = 0.0025; });
+async function _woodMaps(rx, ry) {
+  const [map, bumpMap, roughnessMap] = await Promise.all([
+    _loadTex('/quarto-3d/assets/wood/hardwood2_diffuse.jpg', true, rx, ry),
+    _loadTex('/quarto-3d/assets/wood/hardwood2_bump.jpg', false, rx, ry),
+    _loadTex('/quarto-3d/assets/wood/hardwood2_roughness.jpg', false, rx, ry),
+  ]);
+  return { map, bumpMap, roughnessMap };
+}
+function _applyWood(m, maps, color, bump, envI) {
+  m.map = maps.map; m.bumpMap = maps.bumpMap; m.roughnessMap = maps.roughnessMap;
+  m.bumpScale = bump; m.color = new THREE.Color(color); m.roughness = 1.0; m.metalness = 0.0;
+  m.envMapIntensity = envI; m.needsUpdate = true;
+}
+try {
+  _applyWood(mat.floor, await _woodMaps(3.0, 2.4), 0xd8b588, 0.4, 0.6);
+  _applyWood(mat.oak, await _woodMaps(1.4, 1.4), 0xcaa06a, 0.25, 0.5);
+  _applyWood(mat.spruce, await _woodMaps(0.6, 0.6), 0xe6bf84, 0.15, 0.5);
+} catch (_e) { /* fallback: mantém cores chapadas */ }
+
+function _cvs(size, draw) { const c = document.createElement('canvas'); c.width = c.height = size; draw(c.getContext('2d'), size); return c; }
+function _canvasTex(cv, rep) { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); t.anisotropy = 8; return t; }
+// Tecido: trama (fio sobre fio) + ruído fino.
+const _fabricCv = _cvs(256, (x, s) => {
+  x.fillStyle = '#7f7f7f'; x.fillRect(0, 0, s, s);
+  const n = 16, st = s / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const v = (i + j) % 2 === 0 ? 172 : 108; x.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')'; x.fillRect(i * st + 0.5, j * st + 0.5, st - 1, st - 1); }
+  for (let k = 0; k < 16000; k++) { const g = Math.random() * 255; x.fillStyle = 'rgba(' + g + ',' + g + ',' + g + ',0.05)'; x.fillRect(Math.random() * s, Math.random() * s, 1, 1); }
+});
+function _fabric(m, rep, bump, rough) { m.bumpMap = _canvasTex(_fabricCv, rep); m.roughnessMap = _canvasTex(_fabricCv, rep); m.bumpScale = bump; m.roughness = rough; m.metalness = 0; m.envMapIntensity = 0.35; m.needsUpdate = true; }
+_fabric(mat.uph, 10, 0.012, 0.95);
+_fabric(mat.linen, 12, 0.010, 0.92);
+_fabric(mat.white, 12, 0.008, 0.90);
+_fabric(mat.charcoal, 12, 0.012, 0.90);
+_fabric(mat.rug, 18, 0.020, 1.0);
+
+// Reboco fosco (parede/teto) com microtextura.
+const _plasterCv = _cvs(256, (x, s) => {
+  x.fillStyle = '#b0b0b0'; x.fillRect(0, 0, s, s);
+  for (let k = 0; k < 26000; k++) { const g = 150 + Math.random() * 90; x.fillStyle = 'rgba(' + g + ',' + g + ',' + g + ',0.06)'; x.fillRect(Math.random() * s, Math.random() * s, 1, 1); }
+});
+function _plaster(color) { const m = new THREE.MeshStandardMaterial({ color, roughness: 0.96, metalness: 0 }); m.bumpMap = _canvasTex(_plasterCv, 4); m.bumpScale = 0.004; m.envMapIntensity = 0.4; m.name = 'reboco'; return m; }
+mat.wall = _plaster(0xece7de);
+mat.ceiling = _plaster(0xf3f0ea);
+
+// Metais com reflexo coerente via HDRI.
+mat.metal.metalness = 1.0; mat.metal.roughness = 0.42; mat.metal.color = new THREE.Color(0x4a4a50); mat.metal.envMapIntensity = 1.0; mat.metal.needsUpdate = true;
+mat.greyfront.roughness = 0.5; mat.greyfront.metalness = 0.1; mat.greyfront.color = new THREE.Color(0x9a978f); mat.greyfront.envMapIntensity = 0.5; mat.greyfront.needsUpdate = true;
+mat.dark.roughness = 0.3; mat.dark.metalness = 0.2; mat.dark.envMapIntensity = 0.8; mat.dark.needsUpdate = true;
+mat.pot.roughness = 0.5; mat.pot.envMapIntensity = 0.5;
+// Vidro da janela.
+mat.glass = new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.04, transmission: 1.0, thickness: 0.02, ior: 1.5, transparent: true, envMapIntensity: 1.0 });
+mat.glass.name = 'vidro_janela';
 
 const OX = 1.9, OZ = 1.675;
 const add = (mesh, name) => { mesh.name = name; mesh.castShadow = mesh.receiveShadow = true; g.add(mesh); return mesh; };
@@ -240,6 +282,84 @@ const mic = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.015, 0.16, 24), ma
 sph('microfone_globo', mat.metal, 2.30, 0.445, 2.84, 0.028);
 box('fone_estojo', mat.charcoal, 2.36, 2.54, 2.76, 2.94, 0.42, 0.49);
 stage.setObject(g);
+
+// ===== Envelope do quarto (paredes, teto, janela) — com toggle =====
+const H = 2.65, WT = 0.10;
+const env = new THREE.Group(); env.name = 'envelope';
+function W(name, m, x0, x1, z0, z1, y0, y1) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), m);
+  mesh.position.set((x0 + x1) / 2 - OX, (y0 + y1) / 2, (z0 + z1) / 2 - OZ);
+  mesh.castShadow = true; mesh.receiveShadow = true; mesh.name = name; env.add(mesh); return mesh;
+}
+// Paredes (espessura para fora do quarto, dimensões internas preservadas).
+W('parede_esquerda', mat.wall, -WT, 0, 0, 3.0, 0, H);
+W('parede_direita', mat.wall, 3.8, 3.8 + WT, 0, 3.35, 0, H);
+W('parede_banheiro', mat.wall, 0, 2.6, 3.0, 3.0 + WT, 0, H);
+W('parede_nicho_fundo', mat.wall, 2.6, 3.8, 3.35, 3.35 + WT, 0, H);
+W('parede_nicho_retorno', mat.wall, 2.6 - WT, 2.6, 3.0, 3.35, 0, H);
+// Parede da janela (z=0) com vão real: x 1,20–2,57 · y 1,10–2,20.
+W('parede_janela_abaixo', mat.wall, 0, 3.8, -WT, 0, 0, 1.10);
+W('parede_janela_acima', mat.wall, 0, 3.8, -WT, 0, 2.20, H);
+W('parede_janela_esq', mat.wall, 0, 1.20, -WT, 0, 1.10, 2.20);
+W('parede_janela_dir', mat.wall, 2.57, 3.8, -WT, 0, 1.10, 2.20);
+W('teto', mat.ceiling, -WT, 3.8, -WT, 3.35, H, H + WT);
+// Rodapés.
+const RB = 0.09, RT = 0.016;
+W('rodape_esq', mat.ceiling, 0, RT, 0, 3.0, 0, RB);
+W('rodape_dir', mat.ceiling, 3.8 - RT, 3.8, 0, 3.35, 0, RB);
+W('rodape_janela', mat.ceiling, 0, 3.8, 0, RT, 0, RB);
+W('rodape_banheiro', mat.ceiling, 0, 2.6, 3.0 - RT, 3.0, 0, RB);
+// Janela: peitoril, caixilho e vidro.
+W('peitoril', mat.oak, 1.15, 2.62, 0, 0.07, 1.06, 1.10);
+W('caixilho_inf', mat.ceiling, 1.18, 2.59, -0.04, 0.02, 1.10, 1.13);
+W('caixilho_sup', mat.ceiling, 1.18, 2.59, -0.04, 0.02, 2.17, 2.20);
+W('caixilho_esq', mat.ceiling, 1.18, 1.21, -0.04, 0.02, 1.10, 2.20);
+W('caixilho_dir', mat.ceiling, 2.56, 2.59, -0.04, 0.02, 1.10, 2.20);
+W('caixilho_meio', mat.ceiling, 1.87, 1.90, -0.03, 0.01, 1.10, 2.20);
+const _glass = W('vidro', mat.glass, 1.21, 2.56, -0.03, -0.01, 1.13, 2.17); _glass.castShadow = false;
+scene.add(env);
+
+// ===== Enquadramentos profissionais + toggle do envelope =====
+const C = (x, z, y) => new THREE.Vector3(x - OX, y, z - OZ);
+const VIEWS = {
+  'Geral':    { p: C(3.25, 3.2, 2.35), t: C(1.3, 1.2, 0.55) },
+  'Entrada':  { p: C(3.4, 3.15, 1.6), t: C(0.9, 1.05, 0.9) },
+  'Cama':     { p: C(3.1, 1.15, 1.5), t: C(0.6, 0.65, 1.2) },
+  'Trabalho': { p: C(2.1, 1.55, 1.45), t: C(3.65, 0.95, 0.9) },
+  'Detalhe':  { p: C(1.35, 1.0, 1.05), t: C(0.35, 0.55, 1.3) },
+};
+let _tw = null;
+function viewTo(v, ms = 800) {
+  const p0 = camera.position.clone(), t0 = controls.target.clone(), start = performance.now();
+  if (_tw) cancelAnimationFrame(_tw);
+  (function step(now) {
+    const k = Math.min(1, (now - start) / Math.max(1, ms));
+    const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    camera.position.lerpVectors(p0, v.p, e); controls.target.lerpVectors(t0, v.t, e); controls.update();
+    if (k < 1) _tw = requestAnimationFrame(step);
+  })(start);
+}
+const _st = document.createElement('style');
+_st.textContent = `
+.rg-ui{position:fixed;right:16px;top:16px;z-index:10;display:flex;flex-direction:column;gap:8px;align-items:flex-end;font:500 12.5px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+.rg-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:min(92vw,560px)}
+.rg-ui button{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(28,30,45,.72);color:#e9e9ed;border-radius:8px;padding:8px 11px;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.rg-ui button:hover{background:rgba(40,43,62,.92)}
+.rg-ui button.on{background:#9184d9;border-color:#9184d9;color:#141322}
+.rg-tog{display:flex;align-items:center;gap:6px;color:#cfcfe0;background:rgba(28,30,45,.72);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:7px 10px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);cursor:pointer}
+`;
+document.head.appendChild(_st);
+const ui = document.createElement('div'); ui.className = 'rg-ui';
+ui.innerHTML = '<div class="rg-row">' +
+  Object.keys(VIEWS).map((k, i) => '<button data-v="' + k + '"' + (i === 0 ? ' class="on"' : '') + '>' + k + '</button>').join('') +
+  '</div><label class="rg-tog"><input type="checkbox" checked> Paredes/teto</label>';
+document.body.appendChild(ui);
+ui.querySelectorAll('button[data-v]').forEach((b) => b.addEventListener('click', () => {
+  ui.querySelectorAll('button[data-v]').forEach((x) => x.classList.remove('on')); b.classList.add('on');
+  viewTo(VIEWS[b.dataset.v]);
+}));
+ui.querySelector('input').addEventListener('change', (e) => { env.visible = e.target.checked; });
+viewTo(VIEWS['Geral'], 0);
 </script>
 </body>
 </html>

@@ -231,15 +231,28 @@
       const scene = new THREE.Scene();
       this._scene = scene;
 
-      // Soft image-based lighting from a procedural room (no external HDRI).
-      // This is the main realism gain for the MeshStandardMaterial surfaces;
-      // kept subtle via a low environmentIntensity for a sober look.
+      // Image-based lighting from a real HDRI (served locally from our domain).
+      // This is the main realism gain for the PBR surfaces; the window reveals
+      // the (blurred) sky. Falls back to a procedural room if the HDRI fails.
       try {
-        const envMod = await import('three/addons/environments/RoomEnvironment.js');
+        const { RGBELoader } = await import('three/addons/loaders/RGBELoader.js');
         const pmrem = new THREE.PMREMGenerator(renderer);
-        scene.environment = pmrem.fromScene(new envMod.RoomEnvironment(), 0.04).texture;
-        scene.environmentIntensity = 0.35;
-      } catch (_e) { /* environment map is optional */ }
+        pmrem.compileEquirectangularShader();
+        const hdr = await new RGBELoader().loadAsync('/quarto-3d/assets/hdri/quarry_01_1k.hdr');
+        hdr.mapping = THREE.EquirectangularReflectionMapping;
+        scene.environment = pmrem.fromEquirectangular(hdr).texture;
+        scene.environmentIntensity = 0.75;
+        scene.background = hdr;
+        scene.backgroundBlurriness = 0.4;
+        scene.backgroundIntensity = 0.9;
+      } catch (_e) {
+        try {
+          const envMod = await import('three/addons/environments/RoomEnvironment.js');
+          const pmrem = new THREE.PMREMGenerator(renderer);
+          scene.environment = pmrem.fromScene(new envMod.RoomEnvironment(), 0.04).texture;
+          scene.environmentIntensity = 0.5;
+        } catch (_e2) { /* environment map is optional */ }
+      }
 
       const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 500);
       camera.position.set(3, 2.2, 4);
@@ -250,27 +263,32 @@
       controls.dampingFactor = 0.08;
       this._controls = controls;
 
-      // Neutral studio: soft sky/ground wash, a shadow-casting key light,
-      // and a dim fill from behind so silhouettes never go black.
-      // Env map already provides soft ambient, so the direct lights are dialed
-      // back and warmed slightly for a calmer, more natural result.
-      scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d2c4, 0.5));
-      const key = new THREE.DirectionalLight(0xfff4e8, 2.0);
-      key.position.set(4, 7, 5);
+      // Daylight: a warm sun that enters through the window plus a very low
+      // ambient fill — the HDRI supplies the soft indirect light. The sun's
+      // position is set in setObject() from the room bounds so it comes from
+      // outside the window wall.
+      scene.add(new THREE.HemisphereLight(0xffffff, 0xcfc7b6, 0.12));
+      const key = new THREE.DirectionalLight(0xfff1dc, 3.0);
+      key.position.set(2, 6, -5);
       key.castShadow = true;
-      key.shadow.mapSize.set(2048, 2048);
-      key.shadow.bias = -0.0002;
-      key.shadow.normalBias = 0.02;
-      key.shadow.radius = 3;
+      key.shadow.mapSize.set(4096, 4096);
+      key.shadow.bias = -0.00035;
+      key.shadow.normalBias = 0.03;
+      key.shadow.radius = 6;
+      key.shadow.blurSamples = 16;
+      const sunTarget = new THREE.Object3D();
+      scene.add(sunTarget);
+      key.target = sunTarget;
       this._key = key;
+      this._sunTarget = sunTarget;
       scene.add(key);
-      const fill = new THREE.DirectionalLight(0xfff4e6, 0.45);
-      fill.position.set(-5, 3, -4);
+      const fill = new THREE.DirectionalLight(0xdfe6ff, 0.18);
+      fill.position.set(-4, 3, 4);
       scene.add(fill);
 
       const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(200, 200),
-        new THREE.ShadowMaterial({ opacity: 0.18 })
+        new THREE.ShadowMaterial({ opacity: 0.12 })
       );
       ground.rotation.x = -Math.PI / 2;
       ground.receiveShadow = true;
@@ -284,18 +302,58 @@
         controls.autoRotate = false;
       });
 
+      // High-quality pipeline: MSAA HDR target -> GTAO (contact/ambient
+      // occlusion) -> OutputPass (ACES tone map + sRGB) -> SMAA edge AA.
+      // Degrades gracefully: if anything fails to load we keep the plain
+      // renderer so the scene always shows.
+      let composer = null, gtao = null;
+      try {
+        const [{ EffectComposer }, { RenderPass }, { OutputPass }, { SMAAPass }] =
+          await Promise.all([
+            import('three/addons/postprocessing/EffectComposer.js'),
+            import('three/addons/postprocessing/RenderPass.js'),
+            import('three/addons/postprocessing/OutputPass.js'),
+            import('three/addons/postprocessing/SMAAPass.js'),
+          ]);
+        const w0 = this.clientWidth || 1, h0 = this.clientHeight || 1;
+        const rt = new THREE.WebGLRenderTarget(w0, h0, {
+          type: THREE.HalfFloatType,
+          samples: 4,
+        });
+        composer = new EffectComposer(renderer, rt);
+        composer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        composer.addPass(new RenderPass(scene, camera));
+        try {
+          const { GTAOPass } = await import('three/addons/postprocessing/GTAOPass.js');
+          gtao = new GTAOPass(scene, camera, w0, h0);
+          if (GTAOPass.OUTPUT) gtao.output = GTAOPass.OUTPUT.Default;
+          try {
+            gtao.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.0, thickness: 1.0, scale: 1.0, samples: 16, screenSpaceRadius: false });
+            gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 1, rings: 2, samples: 16 });
+          } catch (_p) { /* keep GTAO defaults */ }
+          composer.addPass(gtao);
+        } catch (_g) { gtao = null; }
+        composer.addPass(new OutputPass());
+        composer.addPass(new SMAAPass());
+        this._composer = composer;
+        this._gtao = gtao;
+      } catch (_c) { composer = null; }
+
       const fit = () => {
         const w = this.clientWidth || 1;
         const h = this.clientHeight || 1;
         renderer.setSize(w, h);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
+        if (this._composer) this._composer.setSize(w, h);
+        if (this._gtao) this._gtao.setSize(w, h);
       };
       fit();
       this._ro = new ResizeObserver(fit);
       this._loop = () => {
         controls.update();
-        renderer.render(scene, camera);
+        if (this._composer) this._composer.render();
+        else renderer.render(scene, camera);
       };
       // Detached while three.js was fetching? Stay idle — the
       // connectedCallback resume starts the loop and observer on
@@ -305,7 +363,7 @@
         renderer.setAnimationLoop(this._loop);
       }
 
-      this._readyResolve({ THREE });
+      this._readyResolve({ THREE, scene, camera, controls, renderer });
     }
 
     disconnectedCallback() {
@@ -351,7 +409,17 @@
         this._key.shadow.camera.right = span;
         this._key.shadow.camera.top = span;
         this._key.shadow.camera.bottom = -span;
+        this._key.shadow.camera.near = 0.1;
+        this._key.shadow.camera.far = sphere.radius * 10;
         this._key.shadow.camera.updateProjectionMatrix();
+        // Place the sun outside the window wall (room z=0 ≈ box.min.z) and high,
+        // aiming at the floor inside so a daylight patch falls across the room.
+        const r = sphere.radius;
+        this._key.position.set(sphere.center.x + r * 0.45, box.max.y + r * 1.5, box.min.z - r * 1.3);
+        if (this._sunTarget) {
+          this._sunTarget.position.set(sphere.center.x - r * 0.1, box.min.y, sphere.center.z + r * 0.15);
+          this._sunTarget.updateMatrixWorld();
+        }
       }
       this._scene.add(object);
       this._setButtonsEnabled(true);

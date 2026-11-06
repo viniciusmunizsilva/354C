@@ -222,11 +222,24 @@
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      // Filmic tone mapping for natural contrast instead of flat sRGB output.
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
       this._renderer = renderer;
       this.shadowRoot.insertBefore(renderer.domElement, this._err);
 
       const scene = new THREE.Scene();
       this._scene = scene;
+
+      // Soft image-based lighting from a procedural room (no external HDRI).
+      // This is the main realism gain for the MeshStandardMaterial surfaces;
+      // kept subtle via a low environmentIntensity for a sober look.
+      try {
+        const envMod = await import('three/addons/environments/RoomEnvironment.js');
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        scene.environment = pmrem.fromScene(new envMod.RoomEnvironment(), 0.04).texture;
+        scene.environmentIntensity = 0.35;
+      } catch (_e) { /* environment map is optional */ }
 
       const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 500);
       camera.position.set(3, 2.2, 4);
@@ -239,15 +252,19 @@
 
       // Neutral studio: soft sky/ground wash, a shadow-casting key light,
       // and a dim fill from behind so silhouettes never go black.
-      scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d2c4, 1.0));
-      const key = new THREE.DirectionalLight(0xffffff, 2.2);
+      // Env map already provides soft ambient, so the direct lights are dialed
+      // back and warmed slightly for a calmer, more natural result.
+      scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d2c4, 0.5));
+      const key = new THREE.DirectionalLight(0xfff4e8, 2.0);
       key.position.set(4, 7, 5);
       key.castShadow = true;
       key.shadow.mapSize.set(2048, 2048);
       key.shadow.bias = -0.0002;
+      key.shadow.normalBias = 0.02;
+      key.shadow.radius = 3;
       this._key = key;
       scene.add(key);
-      const fill = new THREE.DirectionalLight(0xfff4e6, 0.5);
+      const fill = new THREE.DirectionalLight(0xfff4e6, 0.45);
       fill.position.set(-5, 3, -4);
       scene.add(fill);
 

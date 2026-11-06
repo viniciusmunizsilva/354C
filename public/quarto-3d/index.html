@@ -11,7 +11,8 @@
     "three": "/quarto-3d/vendor/three/build/three.module.js",
     "three/addons/controls/OrbitControls.js": "/quarto-3d/vendor/three/examples/jsm/controls/OrbitControls.js",
     "three/addons/exporters/OBJExporter.js": "/quarto-3d/vendor/three/examples/jsm/exporters/OBJExporter.js",
-    "three/addons/exporters/GLTFExporter.js": "/quarto-3d/vendor/three/examples/jsm/exporters/GLTFExporter.js"
+    "three/addons/exporters/GLTFExporter.js": "/quarto-3d/vendor/three/examples/jsm/exporters/GLTFExporter.js",
+    "three/addons/environments/RoomEnvironment.js": "/quarto-3d/vendor/three/examples/jsm/environments/RoomEnvironment.js"
   }
 }
 </script>
@@ -62,6 +63,35 @@ const mat = {
   warm: M('luz_quente', 0xffd9a0, 0.4),
 };
 mat.warm.emissive = new THREE.Color(0xffc777); mat.warm.emissiveIntensity = 0.9;
+
+// --- Texturas procedurais sutis (geradas em canvas, sem arquivos externos) ---
+// Aplicadas só em rugosidade/relevo para manter a paleta sóbria.
+function _canvasTex(size, draw, repeat) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const x = c.getContext('2d'); draw(x, size);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat);
+  t.anisotropy = 4; return t;
+}
+const woodTex = _canvasTex(256, (x, s) => {
+  x.fillStyle = '#808080'; x.fillRect(0, 0, s, s);
+  for (let i = 0; i < 70; i++) {
+    const y = Math.random() * s, g = 110 + Math.random() * 90;
+    x.strokeStyle = 'rgba(' + g + ',' + g + ',' + g + ',0.5)';
+    x.lineWidth = 0.5 + Math.random() * 1.5; x.beginPath(); x.moveTo(0, y);
+    x.bezierCurveTo(s * 0.33, y + (Math.random() - 0.5) * 6, s * 0.66, y + (Math.random() - 0.5) * 6, s, y);
+    x.stroke();
+  }
+  for (let i = 0; i < 9000; i++) { const v = 120 + Math.random() * 80; x.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.05)'; x.fillRect(Math.random() * s, Math.random() * s, 1, 1); }
+}, 2);
+const fabricTex = _canvasTex(128, (x, s) => {
+  x.fillStyle = '#888'; x.fillRect(0, 0, s, s);
+  for (let i = 0; i < s; i += 3) { x.fillStyle = 'rgba(255,255,255,0.10)'; x.fillRect(i, 0, 1, s); x.fillStyle = 'rgba(0,0,0,0.10)'; x.fillRect(0, i, s, 1); }
+  for (let i = 0; i < 4000; i++) { const v = Math.random() * 255; x.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.08)'; x.fillRect(Math.random() * s, Math.random() * s, 1, 1); }
+}, 6);
+[mat.floor, mat.oak, mat.spruce].forEach((m) => { m.roughnessMap = woodTex; m.bumpMap = woodTex; m.bumpScale = 0.003; });
+[mat.uph, mat.linen, mat.white, mat.charcoal, mat.rug].forEach((m) => { m.roughnessMap = fabricTex; m.bumpMap = fabricTex; m.bumpScale = 0.0025; });
+
 const OX = 1.9, OZ = 1.675;
 const add = (mesh, name) => { mesh.name = name; mesh.castShadow = mesh.receiveShadow = true; g.add(mesh); return mesh; };
 function box(name, m, x0, x1, z0, z1, y0, y1) {

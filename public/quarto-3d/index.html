@@ -374,6 +374,13 @@ ui.querySelectorAll('button[data-v]').forEach((b) => b.addEventListener('click',
 }));
 ui.querySelector('input').addEventListener('change', (e) => { env.visible = e.target.checked; });
 viewTo(VIEWS['Geral'], 0);
+
+// Modo limpo (?ui=0): esconde sobreposições para capturas/miniaturas.
+if (new URLSearchParams(location.search).get('ui') === '0') {
+  const info = document.querySelector('.info'); if (info) info.style.display = 'none';
+  ui.style.display = 'none';
+  try { ['.toolbar', '.note'].forEach((s) => { const el = stage.shadowRoot.querySelector(s); if (el) el.style.display = 'none'; }); } catch (_e) {}
+}
 </script>
 </body>
 </html>

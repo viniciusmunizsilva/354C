@@ -333,6 +333,14 @@
           } catch (_p) { /* keep GTAO defaults */ }
           composer.addPass(gtao);
         } catch (_g) { gtao = null; }
+        try {
+          const { UnrealBloomPass } = await import('three/addons/postprocessing/UnrealBloomPass.js');
+          // Bloom muito sutil: só valores de HDR acima do limiar (lâmpadas
+          // quentes/emissivas) espalham um leve brilho. Nada cinematográfico.
+          const bloom = new UnrealBloomPass(new THREE.Vector2(w0, h0), 0.18, 0.5, 1.05);
+          composer.addPass(bloom);
+          this._bloom = bloom;
+        } catch (_b) { /* bloom opcional */ }
         composer.addPass(new OutputPass());
         composer.addPass(new SMAAPass());
         this._composer = composer;
@@ -347,6 +355,7 @@
         camera.updateProjectionMatrix();
         if (this._composer) this._composer.setSize(w, h);
         if (this._gtao) this._gtao.setSize(w, h);
+        if (this._bloom) this._bloom.setSize(w, h);
       };
       fit();
       this._ro = new ResizeObserver(fit);

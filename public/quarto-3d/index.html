@@ -72,7 +72,7 @@ const mat = {
   spruce: M('tampo_violao', 0xd8a96a, 0.4),
   warm: M('luz_quente', 0xffd9a0, 0.4),
 };
-mat.warm.emissive = new THREE.Color(0xffc777); mat.warm.emissiveIntensity = 0.9;
+mat.warm.emissive = new THREE.Color(0xffc777); mat.warm.emissiveIntensity = 1.6;
 
 // --- Materiais PBR: madeira (textura oficial do three.js) + tecido/reboco/metal/vidro procedurais ---
 const _texLoader = new THREE.TextureLoader();
@@ -103,6 +103,22 @@ try {
 
 function _cvs(size, draw) { const c = document.createElement('canvas'); c.width = c.height = size; draw(c.getContext('2d'), size); return c; }
 function _canvasTex(cv, rep) { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); t.anisotropy = 8; return t; }
+// Converte um mapa de altura (canvas) em normal map tangente (Sobel simples).
+function _heightToNormal(src, strength, rep) {
+  const s = src.width, img = src.getContext('2d').getImageData(0, 0, s, s).data;
+  const out = document.createElement('canvas'); out.width = out.height = s;
+  const octx = out.getContext('2d'), od = octx.createImageData(s, s), o = od.data;
+  const H = (x, y) => img[(((y + s) % s) * s + ((x + s) % s)) * 4] / 255;
+  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+    const nx = (H(x - 1, y) - H(x + 1, y)) * strength;
+    const ny = (H(x, y - 1) - H(x, y + 1)) * strength;
+    const len = Math.hypot(nx, ny, 1), i = (y * s + x) * 4;
+    o[i] = (nx / len * 0.5 + 0.5) * 255; o[i + 1] = (ny / len * 0.5 + 0.5) * 255;
+    o[i + 2] = (1 / len * 0.5 + 0.5) * 255; o[i + 3] = 255;
+  }
+  octx.putImageData(od, 0, 0);
+  const t = new THREE.CanvasTexture(out); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); t.anisotropy = 8; return t;
+}
 // Tecido: trama (fio sobre fio) + ruído fino.
 const _fabricCv = _cvs(256, (x, s) => {
   x.fillStyle = '#7f7f7f'; x.fillRect(0, 0, s, s);
@@ -110,7 +126,7 @@ const _fabricCv = _cvs(256, (x, s) => {
   for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const v = (i + j) % 2 === 0 ? 172 : 108; x.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')'; x.fillRect(i * st + 0.5, j * st + 0.5, st - 1, st - 1); }
   for (let k = 0; k < 16000; k++) { const g = Math.random() * 255; x.fillStyle = 'rgba(' + g + ',' + g + ',' + g + ',0.05)'; x.fillRect(Math.random() * s, Math.random() * s, 1, 1); }
 });
-function _fabric(m, rep, bump, rough) { m.bumpMap = _canvasTex(_fabricCv, rep); m.roughnessMap = _canvasTex(_fabricCv, rep); m.bumpScale = bump; m.roughness = rough; m.metalness = 0; m.envMapIntensity = 0.35; m.needsUpdate = true; }
+function _fabric(m, rep, bump, rough) { m.normalMap = _heightToNormal(_fabricCv, 2.6, rep); m.normalScale = new THREE.Vector2(0.7, 0.7); m.roughnessMap = _canvasTex(_fabricCv, rep); m.roughness = rough; m.metalness = 0; m.envMapIntensity = 0.35; m.needsUpdate = true; }
 _fabric(mat.uph, 10, 0.012, 0.95);
 _fabric(mat.linen, 12, 0.010, 0.92);
 _fabric(mat.white, 12, 0.008, 0.90);
@@ -122,7 +138,7 @@ const _plasterCv = _cvs(256, (x, s) => {
   x.fillStyle = '#b0b0b0'; x.fillRect(0, 0, s, s);
   for (let k = 0; k < 26000; k++) { const g = 150 + Math.random() * 90; x.fillStyle = 'rgba(' + g + ',' + g + ',' + g + ',0.06)'; x.fillRect(Math.random() * s, Math.random() * s, 1, 1); }
 });
-function _plaster(color) { const m = new THREE.MeshStandardMaterial({ color, roughness: 0.96, metalness: 0 }); m.bumpMap = _canvasTex(_plasterCv, 4); m.bumpScale = 0.004; m.envMapIntensity = 0.4; m.name = 'reboco'; return m; }
+function _plaster(color) { const m = new THREE.MeshStandardMaterial({ color, roughness: 0.96, metalness: 0 }); m.normalMap = _heightToNormal(_plasterCv, 1.1, 4); m.normalScale = new THREE.Vector2(0.35, 0.35); m.envMapIntensity = 0.4; m.name = 'reboco'; return m; }
 mat.wall = _plaster(0xece7de);
 mat.ceiling = _plaster(0xf3f0ea);
 
@@ -196,7 +212,7 @@ box('mesa_tampo_parede', mat.oak, 3.20, 3.80, 0.60, 1.80, 0.72, 0.755);
 [[2.42, 0.03], [2.42, 0.54], [3.22, 1.74], [3.74, 1.74]].forEach(([x, z], i) => box('mesa_pe_' + (i + 1), mat.metal, x, x + 0.04, z, z + 0.04, 0, 0.72));
 cyl('luminaria_base', mat.metal, 2.55, 0.12, 0.755, 0.775, 0.06);
 cyl('luminaria_haste', mat.metal, 2.55, 0.12, 0.775, 1.15, 0.008, 0.008, 12);
-cyl('luminaria_cupula', mat.metal, 2.55, 0.20, 1.06, 1.15, 0.07, 0.03);
+cyl('luminaria_cupula', mat.warm, 2.55, 0.20, 1.06, 1.15, 0.07, 0.03);
 plant('planta_mesa_1', 3.62, 0.15, 0.755);
 plant('planta_mesa_2', 3.45, 0.15, 0.755, 0.8);
 // estante baixa vazada ao lado da mesa (0,58 × 0,30 × 0,75)
@@ -250,11 +266,6 @@ for (let i = 0; i < 5; i++) {
   const w = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 8), mat.dark); w.position.set(2.89 - OX + Math.cos(a) * 0.29, 0.025, 1.19 - OZ + Math.sin(a) * 0.29); add(w, 'cadeira_rodizio_' + (i + 1));
 }
 for (let i = _chairStart; i < g.children.length; i++) g.children[i].position.x += 0.20;
-// puff tipo bean bag azul-marinho (Ø 0,65 m), voltado para a TV
-const navy = M('puff_azul_marinho', 0x1f2c66, 0.95);
-sph('puff_corpo', navy, 2.50, 0.19, 1.95, 0.33, 0.58);
-sph('puff_encosto', navy, 2.33, 0.36, 1.95, 0.24, 0.85);
-sph('puff_assento', navy, 2.58, 0.30, 1.95, 0.20, 0.35);
 // guarda-roupa — frentes cinza, estrutura carvalho
 box('guarda_roupa_estrutura', mat.oak, 0, 1.50, 2.40, 3.0, 0, 2.00);
 // portas de correr: 2 folhas em trilhos paralelos, sobreposição de 6 cm
@@ -327,6 +338,18 @@ W('caixilho_dir', mat.ceiling, 2.56, 2.59, -0.04, 0.02, 1.10, 2.20);
 W('caixilho_meio', mat.ceiling, 1.87, 1.90, -0.03, 0.01, 1.10, 2.20);
 const _glass = W('vidro', mat.glass, 1.21, 2.56, -0.03, -0.01, 1.13, 2.17); _glass.castShadow = false;
 scene.add(env);
+
+// Luz artificial quente nos pontos de luz (ponto de luz real + material emissivo).
+const abajurLight = new THREE.PointLight(0xffd39a, 4.0, 3.2, 2.0);
+abajurLight.position.set(0.15 - OX, 0.90, 0.28 - OZ);
+abajurLight.castShadow = true;
+abajurLight.shadow.mapSize.set(1024, 1024);
+abajurLight.shadow.bias = -0.002;
+abajurLight.shadow.radius = 4;
+scene.add(abajurLight);
+const mesaLight = new THREE.PointLight(0xffdca6, 3.0, 2.6, 2.0);
+mesaLight.position.set(2.55 - OX, 1.02, 0.20 - OZ);
+scene.add(mesaLight);
 
 // ===== Enquadramentos profissionais + toggle do envelope =====
 const C = (x, z, y) => new THREE.Vector3(x - OX, y, z - OZ);

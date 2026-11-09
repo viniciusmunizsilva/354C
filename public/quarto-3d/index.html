@@ -116,8 +116,6 @@ _fabric(mat.linen, 12, 0.010, 0.92);
 _fabric(mat.white, 12, 0.008, 0.90);
 _fabric(mat.charcoal, 12, 0.012, 0.90);
 _fabric(mat.rug, 18, 0.020, 1.0);
-mat.throw = new THREE.MeshStandardMaterial({ color: 0x9c6b4f, roughness: 0.9, metalness: 0, name: 'manta_pe_cama' });
-_fabric(mat.throw, 10, 0.014, 0.9);
 
 // Reboco fosco (parede/teto) com microtextura.
 const _plasterCv = _cvs(256, (x, s) => {
@@ -182,9 +180,6 @@ rbox('travesseiro_1', mat.linen, 0.14, 0.44, 0.56, 1.16, 0.54, 0.68, 0.045);
 rbox('travesseiro_2', mat.linen, 0.14, 0.44, 1.22, 1.82, 0.54, 0.68, 0.045);
 rbox('almofada_1', mat.charcoal, 0.42, 0.56, 0.74, 1.12, 0.56, 0.70, 0.045);
 rbox('almofada_2', mat.charcoal, 0.42, 0.56, 1.26, 1.64, 0.56, 0.70, 0.045);
-// manta dobrada no pé da cama (ambientação)
-rbox('manta_pe', mat.throw, 0.55, 1.78, 1.52, 1.90, 0.585, 0.655, 0.03);
-rbox('manta_pe_dobra', mat.throw, 0.55, 1.78, 1.82, 1.93, 0.655, 0.705, 0.03);
 // estantezinha suspensa na parede da cama (sobre o painel), ao lado da cabeceira — 0,40 × 0,22 m
 box('estantezinha_lateral_1', mat.oak, 0.04, 0.26, 0.08, 0.10, 0.30, 0.60);
 box('estantezinha_lateral_2', mat.oak, 0.04, 0.26, 0.46, 0.48, 0.30, 0.60);

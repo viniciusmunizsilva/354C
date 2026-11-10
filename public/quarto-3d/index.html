@@ -226,11 +226,25 @@ function sph(name, m, x, y, z, r, sy = 1) {
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 32, 16), m); mesh.scale.y = sy;
   mesh.position.set(x - OX, y, z - OZ); return add(mesh, name);
 }
+// Folha (lâmina achatada) reutilizada por todas as plantas; terra escura no vaso.
+const _leafGeo = new THREE.ConeGeometry(0.03, 1, 5, 1); _leafGeo.translate(0, 0.5, 0); _leafGeo.scale(1, 1, 0.22); _leafGeo.computeVertexNormals();
+const _soilMat = M('terra_vaso', 0x3a2a1d, 0.95, 0);
 function plant(name, x, z, y0, s = 1) {
-  cyl(name + '_vaso', mat.pot, x, z, y0, y0 + 0.12 * s, 0.06 * s, 0.075 * s);
-  sph(name + '_folhas_1', mat.leaf, x, y0 + 0.2 * s, z, 0.1 * s, 0.9);
-  sph(name + '_folhas_2', mat.leaf, x + 0.05 * s, y0 + 0.27 * s, z - 0.03 * s, 0.07 * s);
-  sph(name + '_folhas_3', mat.leaf, x - 0.05 * s, y0 + 0.25 * s, z + 0.04 * s, 0.07 * s);
+  const cx = x - OX, cz = z - OZ, potH = 0.13 * s, topY = y0 + potH;
+  cyl(name + '_vaso', mat.pot, x, z, y0, topY, 0.062 * s, 0.078 * s);
+  const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.07 * s, 0.07 * s, 0.012, 20), _soilMat); soil.position.set(cx, topY - 0.006, cz); add(soil, name + '_terra');
+  let _sd = 7; for (let i = 0; i < name.length; i++) _sd = (_sd * 31 + name.charCodeAt(i)) % 99991;
+  const r = () => (_sd = (_sd * 9301 + 49297) % 233280) / 233280;
+  const n = 11;
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2 + r() * 0.5, tilt = 0.22 + r() * 0.5;
+    const w = (0.7 + r() * 0.5) * s, h = (0.13 + r() * 0.17) * s;
+    const leaf = new THREE.Mesh(_leafGeo, mat.leaf);
+    leaf.position.set(cx + Math.cos(a) * 0.016 * s, topY - 0.004, cz + Math.sin(a) * 0.016 * s);
+    leaf.rotation.order = 'YXZ'; leaf.rotation.y = -a; leaf.rotation.x = tilt;
+    leaf.scale.set(w, h, w);
+    add(leaf, name + '_folha_' + k);
+  }
 }
 // piso
 box('piso', mat.floor, 0, 3.8, 0, 3.0, -0.02, 0);
@@ -240,15 +254,30 @@ box('tapete', mat.rug, 0.55, 2.30, 0.30, 2.08, 0, 0.012);
 box('painel_cabeceira', mat.panel, 0, 0.025, 0.30, 2.08, 0, 1.30);
 for (let i = 0; i < 12; i++) box('painel_ripa_' + (i + 1), mat.panel, 0.025, 0.04, 0.32 + i * 0.148, 0.36 + i * 0.148, 0, 1.30);
 rbox('cabeceira_estofada', mat.uph, 0.04, 0.13, 0.48, 1.90, 0.25, 1.05, 0.03);
+// capitonê: canais verticais discretos na frente da cabeceira
+const _seamMat = M('costura_cabeceira', 0x4f4c47, 0.95);
+for (let k = 0; k < 5; k++) { const zc = 0.60 + k * 0.325; box('cabeceira_canal_' + k, _seamMat, 0.126, 0.133, zc - 0.004, zc + 0.004, 0.30, 1.00); }
 rbox('cama_base', mat.uph, 0.10, 1.80, 0.50, 1.88, 0.04, 0.32, 0.03);
 rbox('colchao', mat.white, 0.12, 1.78, 0.52, 1.86, 0.32, 0.54, 0.05);
-rbox('edredom', mat.linen, 0.62, 1.80, 0.50, 1.88, 0.54, 0.585, 0.03);
-rbox('edredom_dobra', mat.linen, 0.62, 0.74, 0.50, 1.88, 0.585, 0.615, 0.025);
-rbox('manta_central', mat.charcoal, 0.75, 1.81, 0.95, 1.43, 0.585, 0.605, 0.012);
-rbox('travesseiro_1', mat.linen, 0.14, 0.44, 0.56, 1.16, 0.54, 0.68, 0.045);
-rbox('travesseiro_2', mat.linen, 0.14, 0.44, 1.22, 1.82, 0.54, 0.68, 0.045);
-rbox('almofada_1', mat.charcoal, 0.42, 0.56, 0.74, 1.12, 0.56, 0.70, 0.045);
-rbox('almofada_2', mat.charcoal, 0.42, 0.56, 1.26, 1.64, 0.56, 0.70, 0.045);
+rbox('edredom', mat.linen, 0.62, 1.80, 0.50, 1.88, 0.52, 0.575, 0.03);
+// topo do edredom com ondulações suaves (plano subdividido deslocado por ruído) — cama arrumada
+(function () {
+  const geo = new THREE.PlaneGeometry(1.18, 1.38, 24, 28); geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const px = p.getX(i), pz = p.getZ(i);
+    const d = Math.sin(px * 7.0) * Math.cos(pz * 5.0) * 0.009 + Math.sin(px * 13.0 + pz * 9.0) * 0.005 + Math.sin(pz * 17.0) * 0.004;
+    p.setY(i, d);
+  }
+  geo.computeVertexNormals();
+  const duvet = new THREE.Mesh(geo, mat.linen); duvet.position.set(1.21 - OX, 0.582, 1.19 - OZ); add(duvet, 'edredom_ondulado');
+})();
+rbox('edredom_dobra', mat.linen, 0.62, 0.74, 0.50, 1.88, 0.585, 0.61, 0.025);
+rbox('manta_central', mat.charcoal, 0.75, 1.81, 0.95, 1.43, 0.60, 0.62, 0.012);
+rbox('travesseiro_1', mat.linen, 0.14, 0.44, 0.56, 1.16, 0.58, 0.72, 0.06);
+rbox('travesseiro_2', mat.linen, 0.14, 0.44, 1.22, 1.82, 0.58, 0.72, 0.06);
+rbox('almofada_1', mat.charcoal, 0.42, 0.56, 0.74, 1.12, 0.60, 0.74, 0.05);
+rbox('almofada_2', mat.charcoal, 0.42, 0.56, 1.26, 1.64, 0.60, 0.74, 0.05);
 // estantezinha suspensa na parede da cama (sobre o painel), ao lado da cabeceira — 0,40 × 0,22 m
 box('estantezinha_lateral_1', mat.oak, 0.04, 0.26, 0.08, 0.10, 0.30, 0.60);
 box('estantezinha_lateral_2', mat.oak, 0.04, 0.26, 0.46, 0.48, 0.30, 0.60);
@@ -298,7 +327,7 @@ box('monitor_tela', mat.screen, 3.62, 3.645, 0.92, 1.46, 0.86, 1.19);
 box('monitor_haste', mat.metal, 3.65, 3.675, 1.17, 1.21, 0.755, 0.90);
 box('monitor_base', mat.metal, 3.58, 3.74, 1.11, 1.27, 0.755, 0.765);
 box('mousepad', mat.charcoal, 3.28, 3.52, 1.36, 1.62, 0.755, 0.758);
-box('mouse', mat.dark, 3.36, 3.43, 1.47, 1.51, 0.758, 0.78);
+rbox('mouse', mat.dark, 3.36, 3.43, 1.47, 1.51, 0.758, 0.782, 0.014);
 // notebook no lado da janela, perto do canto
 box('notebook_base', mat.metal, 2.95, 3.27, 0.10, 0.32, 0.755, 0.77);
 box('notebook_teclado', M('teclado', 0x15161a, 0.6, 0.2), 2.965, 3.255, 0.135, 0.285, 0.770, 0.772);
@@ -359,8 +388,9 @@ function buildGuitar(cx, isDark) {
   const x = cx - OX, zBF = 2.90 - OZ, bodyCY = 1.09, top = isDark ? mat.charcoal : mat.spruce;
   const body = new THREE.Mesh(_guitarGeo, top); body.position.set(x, bodyCY, zBF); add(body, 'violao_corpo');
   const inner = new THREE.Mesh(new THREE.CircleGeometry(0.047, 24), mat.sound); inner.position.set(x, bodyCY + 0.05, zBF + 0.03); add(inner, 'violao_boca_fundo');
-  const ros = new THREE.Mesh(new THREE.TorusGeometry(0.052, 0.006, 8, 36), _rosetteMat); ros.position.set(x, bodyCY + 0.05, zBF - 0.002); add(ros, 'violao_roseta');
+  [[0.056, 0.004], [0.050, 0.0022], [0.044, 0.0035]].forEach((rr, ri) => { const ros = new THREE.Mesh(new THREE.TorusGeometry(rr[0], rr[1], 8, 40), ri === 1 ? mat.sound : _rosetteMat); ros.position.set(x, bodyCY + 0.05, zBF - 0.002); add(ros, 'violao_roseta_' + ri); });
   const br = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.028, 0.012), mat.sound); br.position.set(x, bodyCY - 0.16, zBF - 0.006); add(br, 'violao_cavalete');
+  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.004, 0.006), mat.pot); saddle.position.set(x, bodyCY - 0.149, zBF - 0.014); add(saddle, 'violao_rastilho');
   for (let k = 0; k < 6; k++) { const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0022, 0.01, 6), mat.pot); pin.position.set(x + (k - 2.5) * 0.012, bodyCY - 0.153, zBF - 0.012); add(pin, 'violao_pino_' + k); }
   const neckTopY = 1.80;
   const neck = new THREE.Mesh(new THREE.BoxGeometry(0.052, neckTopY - 1.30, 0.03), mat.guitarNeck); neck.position.set(x, (1.30 + neckTopY) / 2, zBF + 0.028); add(neck, 'violao_braco');
@@ -374,8 +404,8 @@ function buildGuitar(cx, isDark) {
     const knob = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.016, 0.006), mat.pot); knob.position.set(x + side * 0.058, neckTopY + 0.04 + row * 0.035, zBF + 0.03); add(knob, 'violao_cravelha_' + k);
   }
   for (let k = 0; k < 6; k++) {
-    const sx = x + (k - 2.5) * 0.009, y0 = bodyCY - 0.17, len = neckTopY - y0;
-    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.0012, 0.0012, len, 4), _stringMat); st.position.set(sx, (y0 + neckTopY) / 2, zBF - 0.004); add(st, 'violao_corda_' + k);
+    const sx = x + (k - 2.5) * 0.009, y0 = bodyCY - 0.17, len = neckTopY - y0, sr = 0.0016 - k * 0.00013;
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(sr, sr, len, 5), _stringMat); st.position.set(sx, (y0 + neckTopY) / 2, zBF - 0.004); add(st, 'violao_corda_' + k);
   }
   const sup = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.05), mat.metal); sup.position.set(x, 1.81, zBF + 0.085); add(sup, 'violao_suporte');
 }

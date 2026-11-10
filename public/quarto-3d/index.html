@@ -82,24 +82,44 @@ async function _loadTex(url, srgb, rx, ry) {
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-async function _woodMaps(rx, ry) {
+async function _woodMaps() {
   const [map, bumpMap, roughnessMap] = await Promise.all([
-    _loadTex('/quarto-3d/assets/wood/hardwood2_diffuse.jpg', true, rx, ry),
-    _loadTex('/quarto-3d/assets/wood/hardwood2_bump.jpg', false, rx, ry),
-    _loadTex('/quarto-3d/assets/wood/hardwood2_roughness.jpg', false, rx, ry),
+    _loadTex('/quarto-3d/assets/wood/hardwood2_diffuse.jpg', true, 1, 1),
+    _loadTex('/quarto-3d/assets/wood/hardwood2_bump.jpg', false, 1, 1),
+    _loadTex('/quarto-3d/assets/wood/hardwood2_roughness.jpg', false, 1, 1),
   ]);
   return { map, bumpMap, roughnessMap };
 }
-function _applyWood(m, maps, color, bump, envI) {
-  m.map = maps.map; m.bumpMap = maps.bumpMap; m.roughnessMap = maps.roughnessMap;
-  m.bumpScale = bump; m.color = new THREE.Color(color); m.roughness = 1.0; m.metalness = 0.0;
-  m.envMapIntensity = envI; m.needsUpdate = true;
+function _woodClone(tex, rx, ry, rot, srgb) {
+  const c = tex.clone(); c.needsUpdate = true; c.wrapS = c.wrapT = THREE.RepeatWrapping;
+  c.repeat.set(rx, ry); c.anisotropy = 8;
+  if (rot) { c.center.set(0.5, 0.5); c.rotation = rot; }
+  if (srgb) c.colorSpace = THREE.SRGBColorSpace;
+  return c;
 }
+// Base de madeira carregada UMA vez. bump e roughness são COMPARTILHADOS entre
+// todos os materiais de madeira (evita duplicação); cada material tem apenas o
+// seu próprio color map, com escala/orientação/tom distintos.
+let _woodBase = null, _woodBump = null, _woodRough = null;
 try {
-  _applyWood(mat.floor, await _woodMaps(3.0, 2.4), 0xd8b588, 0.4, 0.6);
-  _applyWood(mat.oak, await _woodMaps(1.4, 1.4), 0xcaa06a, 0.25, 0.5);
-  _applyWood(mat.spruce, await _woodMaps(0.6, 0.6), 0xe6bf84, 0.15, 0.5);
+  _woodBase = await _woodMaps();
+  _woodBump = _woodClone(_woodBase.bumpMap, 1.6, 1.6, 0, false);
+  _woodRough = _woodClone(_woodBase.roughnessMap, 1.6, 1.6, 0, false);
 } catch (_e) { /* fallback: mantém cores chapadas */ }
+function _woodMat(m, rx, ry, rot, color, bump, envI) {
+  m.color = new THREE.Color(color);
+  if (_woodBase) {
+    m.map = _woodClone(_woodBase.map, rx, ry, rot, true);
+    m.bumpMap = _woodBump; m.bumpScale = bump; m.roughnessMap = _woodRough;
+  }
+  m.roughness = 1.0; m.metalness = 0.0; m.envMapIntensity = envI; m.needsUpdate = true;
+  return m;
+}
+// Madeiras independentes (escala/orientação/tom distintos → sem repetição óbvia).
+_woodMat(mat.floor, 2.3, 1.85, 0, 0xdcbb8e, 0.38, 0.6);           // piso
+_woodMat(mat.oak,   1.3, 1.3,  0, 0xcaa06a, 0.22, 0.5);           // móveis em geral
+mat.wardrobe = _woodMat(M('carvalho_guarda_roupa', 0xc49a62), 1.1, 1.7, Math.PI / 2, 0xc49a62, 0.2, 0.45);
+mat.panel    = _woodMat(M('carvalho_painel', 0xcb9c5f), 0.95, 2.1, Math.PI / 2, 0xcb9c5f, 0.18, 0.5);
 
 function _cvs(size, draw) { const c = document.createElement('canvas'); c.width = c.height = size; draw(c.getContext('2d'), size); return c; }
 function _canvasTex(cv, rep) { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); t.anisotropy = 8; return t; }
@@ -142,10 +162,43 @@ function _plaster(color) { const m = new THREE.MeshStandardMaterial({ color, rou
 mat.wall = _plaster(0xece7de);
 mat.ceiling = _plaster(0xf3f0ea);
 
-// Metais com reflexo coerente via HDRI.
-mat.metal.metalness = 1.0; mat.metal.roughness = 0.42; mat.metal.color = new THREE.Color(0x4a4a50); mat.metal.envMapIntensity = 1.0; mat.metal.needsUpdate = true;
-mat.greyfront.roughness = 0.5; mat.greyfront.metalness = 0.1; mat.greyfront.color = new THREE.Color(0x9a978f); mat.greyfront.envMapIntensity = 0.5; mat.greyfront.needsUpdate = true;
-mat.dark.roughness = 0.3; mat.dark.metalness = 0.2; mat.dark.envMapIntensity = 0.8; mat.dark.needsUpdate = true;
+// Metal escovado: roughness/normal direcionais sutis (sem reflexo chapado nem plástico).
+const _brushCv = _cvs(256, (x, s) => {
+  x.fillStyle = '#9a9a9a'; x.fillRect(0, 0, s, s);
+  for (let i = 0; i < 2800; i++) { const y = Math.random() * s, v = 110 + Math.random() * 120; x.strokeStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.08)'; x.lineWidth = 0.6; x.beginPath(); x.moveTo(0, y); x.lineTo(s, y + (Math.random() - 0.5)); x.stroke(); }
+});
+mat.metal.metalness = 1.0; mat.metal.roughness = 1.0; mat.metal.color = new THREE.Color(0x565b61);
+mat.metal.roughnessMap = _canvasTex(_brushCv, 3); mat.metal.normalMap = _heightToNormal(_brushCv, 0.7, 3); mat.metal.normalScale = new THREE.Vector2(0.12, 0.12);
+mat.metal.envMapIntensity = 0.9; mat.metal.needsUpdate = true;
+
+// MDF (frentes do guarda-roupa): microtextura sutil, mantém o grafite/cinza.
+mat.greyfront.roughness = 0.45; mat.greyfront.metalness = 0.0; mat.greyfront.color = new THREE.Color(0x9a978f);
+mat.greyfront.normalMap = _heightToNormal(_plasterCv, 0.5, 2); mat.greyfront.normalScale = new THREE.Vector2(0.12, 0.12);
+mat.greyfront.envMapIntensity = 0.45; mat.greyfront.needsUpdate = true;
+
+// Eletrônicos: carcaça fosca + tela de vidro escura com reflexo e leve emissão.
+mat.dark.roughness = 0.35; mat.dark.metalness = 0.25; mat.dark.envMapIntensity = 0.7; mat.dark.needsUpdate = true;
+mat.screen = new THREE.MeshPhysicalMaterial({ color: 0x0b0e14, metalness: 0.0, roughness: 0.12, clearcoat: 1.0, clearcoatRoughness: 0.08, envMapIntensity: 1.0, emissive: new THREE.Color(0x0a1420), emissiveIntensity: 0.35 });
+mat.screen.name = 'tela_vidro';
+
+// Madeira dos violões: veio fino procedural (não a textura de piso).
+const _guitarCv = _cvs(256, (x, s) => {
+  x.fillStyle = '#d7ad72'; x.fillRect(0, 0, s, s);
+  for (let i = 0; i < 130; i++) {
+    const gx = Math.random() * s, w = 0.4 + Math.random() * 1.3, a = 0.05 + Math.random() * 0.12, t = 90 + Math.random() * 70;
+    x.strokeStyle = 'rgba(' + Math.round(t * 0.8) + ',' + Math.round(t * 0.55) + ',' + Math.round(t * 0.32) + ',' + a + ')';
+    x.lineWidth = w; x.beginPath(); x.moveTo(gx, 0);
+    x.bezierCurveTo(gx + (Math.random() - 0.5) * 4, s * 0.33, gx + (Math.random() - 0.5) * 4, s * 0.66, gx + (Math.random() - 0.5) * 3, s);
+    x.stroke();
+  }
+});
+mat.spruce.map = _canvasTex(_guitarCv, 1); mat.spruce.map.colorSpace = THREE.SRGBColorSpace;
+mat.spruce.normalMap = _heightToNormal(_guitarCv, 1.3, 1); mat.spruce.normalScale = new THREE.Vector2(0.22, 0.22);
+mat.spruce.color = new THREE.Color(0xdeb77e); mat.spruce.roughness = 0.5; mat.spruce.metalness = 0; mat.spruce.envMapIntensity = 0.5; mat.spruce.needsUpdate = true;
+mat.guitarNeck = M('braco_violao', 0x6b4a2e, 0.5, 0);
+mat.guitarNeck.map = _canvasTex(_guitarCv, 0.6); mat.guitarNeck.map.colorSpace = THREE.SRGBColorSpace;
+mat.guitarNeck.envMapIntensity = 0.4; mat.guitarNeck.needsUpdate = true;
+
 mat.pot.roughness = 0.5; mat.pot.envMapIntensity = 0.5;
 // Vidro da janela.
 mat.glass = new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: 0.04, transmission: 1.0, thickness: 0.02, ior: 1.5, transparent: true, envMapIntensity: 1.0 });
@@ -184,8 +237,8 @@ box('piso', mat.floor, 0, 3.8, 0, 3.0, -0.02, 0);
 box('piso_porta', mat.floor, 2.6, 3.8, 3.0, 3.35, -0.02, 0);
 box('tapete', mat.rug, 0.55, 2.30, 0.30, 2.08, 0, 0.012);
 // cama — painel ripado de carvalho atrás, cabeceira estofada cinza
-box('painel_cabeceira', mat.oak, 0, 0.025, 0.30, 2.08, 0, 1.30);
-for (let i = 0; i < 12; i++) box('painel_ripa_' + (i + 1), mat.oak, 0.025, 0.04, 0.32 + i * 0.148, 0.36 + i * 0.148, 0, 1.30);
+box('painel_cabeceira', mat.panel, 0, 0.025, 0.30, 2.08, 0, 1.30);
+for (let i = 0; i < 12; i++) box('painel_ripa_' + (i + 1), mat.panel, 0.025, 0.04, 0.32 + i * 0.148, 0.36 + i * 0.148, 0, 1.30);
 rbox('cabeceira_estofada', mat.uph, 0.04, 0.13, 0.48, 1.90, 0.25, 1.05, 0.03);
 rbox('cama_base', mat.uph, 0.10, 1.80, 0.50, 1.88, 0.04, 0.32, 0.03);
 rbox('colchao', mat.white, 0.12, 1.78, 0.52, 1.86, 0.32, 0.54, 0.05);
@@ -238,16 +291,16 @@ plant('planta_estante', 3.65, 2.20, 0.75, 0.9);
 plant('planta_estante_2', 3.68, 2.25, 0.52, 0.6);
 // TV 32" na parede, na reta da cama
 box('tv_moldura', mat.dark, 3.755, 3.80, 0.83, 1.55, 1.35, 1.78);
-box('tv_tela', M('tela_tv', 0x101114, 0.15, 0.1), 3.75, 3.755, 0.84, 1.54, 1.36, 1.77);
+box('tv_tela', mat.screen, 3.75, 3.755, 0.84, 1.54, 1.36, 1.77);
 // monitor 24" no lado de 1,80 m (topo ≤1,20 m, abaixo da soundbar)
-box('monitor_tela', mat.dark, 3.62, 3.645, 0.92, 1.46, 0.86, 1.19);
+box('monitor_tela', mat.screen, 3.62, 3.645, 0.92, 1.46, 0.86, 1.19);
 box('monitor_haste', mat.metal, 3.65, 3.675, 1.17, 1.21, 0.755, 0.90);
 box('monitor_base', mat.metal, 3.58, 3.74, 1.11, 1.27, 0.755, 0.765);
 box('mousepad', mat.charcoal, 3.28, 3.52, 1.36, 1.62, 0.755, 0.758);
 box('mouse', mat.dark, 3.36, 3.43, 1.47, 1.51, 0.758, 0.78);
 // notebook no lado da janela, perto do canto
 box('notebook_base', mat.metal, 2.95, 3.27, 0.10, 0.32, 0.755, 0.77);
-const lid = box('notebook_tela', mat.dark, 2.95, 3.27, 0.09, 0.10, 0.77, 0.99); lid.rotation.x = -0.25;
+const lid = box('notebook_tela', mat.screen, 2.95, 3.27, 0.09, 0.10, 0.77, 0.99); lid.rotation.x = -0.25;
 // soundbar na parede, logo abaixo da TV (0,60 × 0,075 × 0,08 — confirmar medida do modelo)
 box('soundbar', mat.dark, 3.715, 3.795, 0.89, 1.49, 1.24, 1.315);
 box('soundbar_grade', M('grade_soundbar', 0x34353a, 0.9), 3.712, 3.715, 0.90, 1.48, 1.25, 1.305);
@@ -267,7 +320,7 @@ for (let i = 0; i < 5; i++) {
 }
 for (let i = _chairStart; i < g.children.length; i++) g.children[i].position.x += 0.20;
 // guarda-roupa — frentes cinza, estrutura carvalho
-box('guarda_roupa_estrutura', mat.oak, 0, 1.50, 2.40, 3.0, 0, 2.00);
+box('guarda_roupa_estrutura', mat.wardrobe, 0, 1.50, 2.40, 3.0, 0, 2.00);
 // portas de correr: 2 folhas em trilhos paralelos, sobreposição de 6 cm
 box('trilho_superior', mat.metal, 0.02, 1.48, 2.355, 2.40, 1.955, 1.985);
 box('trilho_inferior', mat.metal, 0.02, 1.48, 2.355, 2.40, 0.015, 0.035);
@@ -282,7 +335,7 @@ plant('planta_guarda_roupa', 1.30, 2.70, 2.00, 1.1);
   const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.145, dep, 48), top); upper.rotation.x = Math.PI / 2; upper.position.set(x - OX, 1.18, zf + dep / 2 - OZ); add(upper, n + '_bojo_superior');
   const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.004, 32), mat.sound); hole.rotation.x = Math.PI / 2; hole.position.set(x - OX, 1.09, zf - 0.001 - OZ); add(hole, n + '_boca');
   box(n + '_cavalete', mat.sound, x - 0.06, x + 0.06, zf - 0.006, zf, 0.88, 0.90);
-  box(n + '_braco', mat.oak, x - 0.025, x + 0.025, zf + 0.02, zf + 0.05, 1.30, 1.78);
+  box(n + '_braco', mat.guitarNeck, x - 0.025, x + 0.025, zf + 0.02, zf + 0.05, 1.30, 1.78);
   box(n + '_mao', mat.sound, x - 0.04, x + 0.04, zf + 0.02, zf + 0.05, 1.78, 1.94);
   box(n + '_suporte', mat.metal, x - 0.04, x + 0.04, zf + 0.05, 3.0, 1.80, 1.82);
 });

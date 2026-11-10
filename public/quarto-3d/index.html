@@ -260,8 +260,8 @@ box('estantezinha_livros_deitados', mat.charcoal, 0.07, 0.22, 0.28, 0.44, 0.32, 
 cyl('abajur_base', mat.metal, 0.15, 0.28, 0.60, 0.62, 0.06, 0.06);
 cyl('abajur_haste', mat.metal, 0.15, 0.28, 0.62, 0.86, 0.008);
 cyl('abajur_cupula', mat.warm, 0.15, 0.28, 0.84, 1.00, 0.10, 0.07);
-box('mesa_tampo_janela', mat.oak, 2.40, 3.80, 0, 0.60, 0.72, 0.755);
-box('mesa_tampo_parede', mat.oak, 3.20, 3.80, 0.60, 1.80, 0.72, 0.755);
+rbox('mesa_tampo_janela', mat.oak, 2.40, 3.80, 0, 0.60, 0.72, 0.755, 0.008);
+rbox('mesa_tampo_parede', mat.oak, 3.20, 3.80, 0.60, 1.80, 0.72, 0.755, 0.008);
 [[2.42, 0.03], [2.42, 0.54], [3.22, 1.74], [3.74, 1.74]].forEach(([x, z], i) => box('mesa_pe_' + (i + 1), mat.metal, x, x + 0.04, z, z + 0.04, 0, 0.72));
 cyl('luminaria_base', mat.metal, 2.55, 0.12, 0.755, 0.775, 0.06);
 cyl('luminaria_haste', mat.metal, 2.55, 0.12, 0.775, 1.15, 0.008, 0.008, 12);
@@ -269,8 +269,8 @@ cyl('luminaria_cupula', mat.warm, 2.55, 0.20, 1.06, 1.15, 0.07, 0.03);
 plant('planta_mesa_1', 3.62, 0.15, 0.755);
 plant('planta_mesa_2', 3.45, 0.15, 0.755, 0.8);
 // estante baixa vazada ao lado da mesa (0,58 × 0,30 × 0,75)
-box('estante_lateral_1', mat.oak, 3.50, 3.80, 1.82, 1.84, 0, 0.75);
-box('estante_lateral_2', mat.oak, 3.50, 3.80, 2.38, 2.40, 0, 0.75);
+rbox('estante_lateral_1', mat.oak, 3.50, 3.80, 1.82, 1.84, 0, 0.75, 0.006);
+rbox('estante_lateral_2', mat.oak, 3.50, 3.80, 2.38, 2.40, 0, 0.75, 0.006);
 [0, 0.25, 0.50, 0.73].forEach((y, i) => box('estante_prateleira_' + (i + 1), mat.oak, 3.50, 3.80, 1.84, 2.38, y, y + 0.02));
 const bookCols = [0x7b4a3a, 0x3d4f5f, 0xc9b28a, 0x5c6b4e, 0x8f3f3a, 0x2f3540, 0xd8cfbf, 0x9a7b4f];
 const bookMats = bookCols.map((c, i) => M('livro_cor_' + (i + 1), c, 0.8));
@@ -293,6 +293,7 @@ plant('planta_estante_2', 3.68, 2.25, 0.52, 0.6);
 box('tv_moldura', mat.dark, 3.755, 3.80, 0.83, 1.55, 1.35, 1.78);
 box('tv_tela', mat.screen, 3.75, 3.755, 0.84, 1.54, 1.36, 1.77);
 // monitor 24" no lado de 1,80 m (topo ≤1,20 m, abaixo da soundbar)
+box('monitor_bezel', mat.dark, 3.645, 3.662, 0.90, 1.48, 0.84, 1.21);
 box('monitor_tela', mat.screen, 3.62, 3.645, 0.92, 1.46, 0.86, 1.19);
 box('monitor_haste', mat.metal, 3.65, 3.675, 1.17, 1.21, 0.755, 0.90);
 box('monitor_base', mat.metal, 3.58, 3.74, 1.11, 1.27, 0.755, 0.765);
@@ -300,6 +301,9 @@ box('mousepad', mat.charcoal, 3.28, 3.52, 1.36, 1.62, 0.755, 0.758);
 box('mouse', mat.dark, 3.36, 3.43, 1.47, 1.51, 0.758, 0.78);
 // notebook no lado da janela, perto do canto
 box('notebook_base', mat.metal, 2.95, 3.27, 0.10, 0.32, 0.755, 0.77);
+box('notebook_teclado', M('teclado', 0x15161a, 0.6, 0.2), 2.965, 3.255, 0.135, 0.285, 0.770, 0.772);
+box('notebook_trackpad', M('trackpad', 0x3a3d44, 0.3, 0.3), 3.075, 3.145, 0.255, 0.305, 0.771, 0.772);
+const _hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.30, 10), mat.metal); _hinge.rotation.z = Math.PI / 2; _hinge.position.set(3.11 - OX, 0.770, 0.105 - OZ); add(_hinge, 'notebook_dobradica');
 const lid = box('notebook_tela', mat.screen, 2.95, 3.27, 0.09, 0.10, 0.77, 0.99); lid.rotation.x = -0.25;
 // soundbar na parede, logo abaixo da TV (0,60 × 0,075 × 0,08 — confirmar medida do modelo)
 box('soundbar', mat.dark, 3.715, 3.795, 0.89, 1.49, 1.24, 1.315);
@@ -320,25 +324,62 @@ for (let i = 0; i < 5; i++) {
 }
 for (let i = _chairStart; i < g.children.length; i++) g.children[i].position.x += 0.20;
 // guarda-roupa — frentes cinza, estrutura carvalho
-box('guarda_roupa_estrutura', mat.wardrobe, 0, 1.50, 2.40, 3.0, 0, 2.00);
+rbox('guarda_roupa_estrutura', mat.wardrobe, 0, 1.50, 2.40, 3.0, 0, 2.00, 0.012);
 // portas de correr: 2 folhas em trilhos paralelos, sobreposição de 6 cm
 box('trilho_superior', mat.metal, 0.02, 1.48, 2.355, 2.40, 1.955, 1.985);
 box('trilho_inferior', mat.metal, 0.02, 1.48, 2.355, 2.40, 0.015, 0.035);
 box('porta_correr_traseira', mat.greyfront, 0.03, 0.78, 2.380, 2.398, 0.035, 1.955);
 box('porta_correr_frontal', mat.greyfront, 0.72, 1.47, 2.360, 2.378, 0.035, 1.955);
 [[0.03, 0.05, 2.378], [0.76, 0.78, 2.378], [0.72, 0.74, 2.358], [1.45, 1.47, 2.358]].forEach(([x0, x1, z], i) => box('perfil_porta_' + (i + 1), mat.metal, x0, x1, z - 0.004, z, 0.035, 1.955));
+// puxadores verticais embutidos (marcenaria)
+box('puxador_porta_frontal', mat.metal, 0.78, 0.795, 2.348, 2.360, 0.82, 1.20);
+box('puxador_porta_traseira', mat.metal, 0.69, 0.705, 2.368, 2.380, 0.82, 1.20);
 plant('planta_guarda_roupa', 1.30, 2.70, 2.00, 1.1);
-// violões na parede do banheiro (frente voltada para o quarto)
-[1.74, 2.10, 2.44].forEach((x, i) => {
-  const n = 'violao_' + (i + 1), zf = 2.90, dep = 0.10, top = i === 1 ? mat.charcoal : mat.spruce;
-  const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, dep, 48), top); lower.rotation.x = Math.PI / 2; lower.position.set(x - OX, 0.95, zf + dep / 2 - OZ); add(lower, n + '_bojo_inferior');
-  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.145, dep, 48), top); upper.rotation.x = Math.PI / 2; upper.position.set(x - OX, 1.18, zf + dep / 2 - OZ); add(upper, n + '_bojo_superior');
-  const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.004, 32), mat.sound); hole.rotation.x = Math.PI / 2; hole.position.set(x - OX, 1.09, zf - 0.001 - OZ); add(hole, n + '_boca');
-  box(n + '_cavalete', mat.sound, x - 0.06, x + 0.06, zf - 0.006, zf, 0.88, 0.90);
-  box(n + '_braco', mat.guitarNeck, x - 0.025, x + 0.025, zf + 0.02, zf + 0.05, 1.30, 1.78);
-  box(n + '_mao', mat.sound, x - 0.04, x + 0.04, zf + 0.02, zf + 0.05, 1.78, 1.94);
-  box(n + '_suporte', mat.metal, x - 0.04, x + 0.04, zf + 0.05, 3.0, 1.80, 1.82);
-});
+// ===== Violões detalhados (corpo orgânico extrudado, boca+roseta, cordas, trastes, tarraxas) =====
+// Mesma envoltória e posições: corpo centrado no x, frente ~z 2,90, corpo y 0,76–1,34, braço→1,80, mão→1,95.
+function _guitarShape() {
+  const s = new THREE.Shape();
+  s.moveTo(0, -0.33);
+  s.bezierCurveTo(0.145, -0.33, 0.205, -0.25, 0.195, -0.135);   // bojo inferior (dir)
+  s.bezierCurveTo(0.188, -0.05, 0.112, -0.03, 0.112, 0.02);     // cintura (dir)
+  s.bezierCurveTo(0.112, 0.085, 0.152, 0.12, 0.149, 0.17);      // bojo superior (dir)
+  s.bezierCurveTo(0.146, 0.225, 0.085, 0.245, 0, 0.245);        // topo (dir→centro)
+  s.bezierCurveTo(-0.085, 0.245, -0.146, 0.225, -0.149, 0.17);  // espelho (esq)
+  s.bezierCurveTo(-0.152, 0.12, -0.112, 0.085, -0.112, 0.02);
+  s.bezierCurveTo(-0.112, -0.03, -0.188, -0.05, -0.195, -0.135);
+  s.bezierCurveTo(-0.205, -0.25, -0.145, -0.33, 0, -0.33);
+  const h = new THREE.Path(); h.absarc(0, 0.05, 0.047, 0, Math.PI * 2, true); s.holes.push(h);
+  return s;
+}
+const _guitarGeo = new THREE.ExtrudeGeometry(_guitarShape(), { depth: 0.08, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.014, bevelSegments: 2, curveSegments: 26 });
+_guitarGeo.computeVertexNormals();
+const _stringMat = M('corda_violao', 0xcfcfce, 0.35, 0.9);
+const _rosetteMat = M('roseta', 0x4a3524, 0.5, 0);
+function buildGuitar(cx, isDark) {
+  const x = cx - OX, zBF = 2.90 - OZ, bodyCY = 1.09, top = isDark ? mat.charcoal : mat.spruce;
+  const body = new THREE.Mesh(_guitarGeo, top); body.position.set(x, bodyCY, zBF); add(body, 'violao_corpo');
+  const inner = new THREE.Mesh(new THREE.CircleGeometry(0.047, 24), mat.sound); inner.position.set(x, bodyCY + 0.05, zBF + 0.03); add(inner, 'violao_boca_fundo');
+  const ros = new THREE.Mesh(new THREE.TorusGeometry(0.052, 0.006, 8, 36), _rosetteMat); ros.position.set(x, bodyCY + 0.05, zBF - 0.002); add(ros, 'violao_roseta');
+  const br = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.028, 0.012), mat.sound); br.position.set(x, bodyCY - 0.16, zBF - 0.006); add(br, 'violao_cavalete');
+  for (let k = 0; k < 6; k++) { const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0022, 0.01, 6), mat.pot); pin.position.set(x + (k - 2.5) * 0.012, bodyCY - 0.153, zBF - 0.012); add(pin, 'violao_pino_' + k); }
+  const neckTopY = 1.80;
+  const neck = new THREE.Mesh(new THREE.BoxGeometry(0.052, neckTopY - 1.30, 0.03), mat.guitarNeck); neck.position.set(x, (1.30 + neckTopY) / 2, zBF + 0.028); add(neck, 'violao_braco');
+  const fb = new THREE.Mesh(new THREE.BoxGeometry(0.046, neckTopY - 1.33, 0.006), mat.sound); fb.position.set(x, (1.33 + neckTopY) / 2, zBF + 0.012); add(fb, 'violao_escala');
+  for (let f = 1; f <= 7; f++) { const fy = 1.34 + (neckTopY - 1.36) * (f / 8); const fr = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.0035, 0.004), mat.metal); fr.position.set(x, fy, zBF + 0.009); add(fr, 'violao_traste_' + f); }
+  const nut = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.008, 0.012), mat.pot); nut.position.set(x, neckTopY, zBF + 0.012); add(nut, 'violao_pestana');
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.14, 0.018), mat.guitarNeck); head.position.set(x, neckTopY + 0.075, zBF + 0.03); head.rotation.x = 0.18; add(head, 'violao_mao');
+  for (let k = 0; k < 6; k++) {
+    const side = k < 3 ? -1 : 1, row = k % 3;
+    const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.03, 8), mat.metal); peg.rotation.z = Math.PI / 2; peg.position.set(x + side * 0.04, neckTopY + 0.04 + row * 0.035, zBF + 0.03); add(peg, 'violao_tarraxa_' + k);
+    const knob = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.016, 0.006), mat.pot); knob.position.set(x + side * 0.058, neckTopY + 0.04 + row * 0.035, zBF + 0.03); add(knob, 'violao_cravelha_' + k);
+  }
+  for (let k = 0; k < 6; k++) {
+    const sx = x + (k - 2.5) * 0.009, y0 = bodyCY - 0.17, len = neckTopY - y0;
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.0012, 0.0012, len, 4), _stringMat); st.position.set(sx, (y0 + neckTopY) / 2, zBF - 0.004); add(st, 'violao_corda_' + k);
+  }
+  const sup = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.05), mat.metal); sup.position.set(x, 1.81, zBF + 0.085); add(sup, 'violao_suporte');
+}
+[1.74, 2.10, 2.44].forEach((x, i) => buildGuitar(x, i === 1));
 // amplificador e estante de equipamentos sob os violões
 box('amp_caixa', mat.charcoal, 1.60, 2.00, 2.73, 2.98, 0, 0.38);
 box('amp_tela_falante', M('tela_amp', 0x2a2522, 0.95), 1.62, 1.98, 2.725, 2.73, 0.03, 0.30);
